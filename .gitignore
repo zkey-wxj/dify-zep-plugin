@@ -132,6 +132,7 @@ celerybeat.pid
 .venv
 env/
 venv/
+.tmp_depcheck
 ENV/
 env.bak/
 venv.bak/
