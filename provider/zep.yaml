@@ -20,6 +20,15 @@ credentials_for_provider:
     help:
       en_US: Get the API key from your Zep project
     url: https://app.getzep.com/projects
+  zep_base_url:
+    type: text-input
+    required: false
+    label:
+      en_US: Base URL
+    placeholder:
+      en_US: https://api.getzep.com
+    help:
+      en_US: Optional custom Zep API base URL
 
 tools:
   - tools/init_session.yaml

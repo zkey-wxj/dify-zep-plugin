@@ -12,8 +12,8 @@ class SearchUserGraphTool(Tool):
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
         try:
             api_key = self.runtime.credentials["zep_api_key"]
-
-            client = Zep(api_key=api_key)
+            base_url = self.runtime.credentials["zep_base_url"]
+            client = Zep(api_key=api_key, base_url=base_url)
 
             graph_edges = client.graph.search(
                 user_id=tool_parameters["user_id"],

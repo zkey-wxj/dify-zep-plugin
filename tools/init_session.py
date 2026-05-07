@@ -12,7 +12,8 @@ class InitSessionTool(Tool):
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
         try:
             api_key = self.runtime.credentials["zep_api_key"]
-            client = Zep(api_key=api_key)
+            base_url = self.runtime.credentials["zep_base_url"]
+            client = Zep(api_key=api_key, base_url=base_url)
 
             try:
                 client.memory.add_session(

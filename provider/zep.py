@@ -10,7 +10,9 @@ from zep_cloud.core.api_error import ApiError
 class ZepProvider(ToolProvider):
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
-            client = Zep(api_key=credentials["zep_api_key"])
+            api_key = self.runtime.credentials["zep_api_key"]
+            base_url = self.runtime.credentials["zep_base_url"]
+            client = Zep(api_key=api_key, base_url=base_url)
             client.memory.get(session_id="test")
         except Exception as e:
             if isinstance(e, ApiError) and e.status_code == 401:
