@@ -1,19 +1,27 @@
 # .github/workflows/plugin-publish.yml
-name: Package Plugin on Main Push
+
+name: Package And Release Plugin
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   package_plugin:
-    runs-on: depot-ubuntu-24.04
+    runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Print working directory
+        run: |
+          pwd
+          ls -la
 
       - name: Download CLI tool
         run: |
@@ -21,46 +29,64 @@ jobs:
           cd $RUNNER_TEMP/bin
 
           wget https://github.com/langgenius/dify-plugin-daemon/releases/latest/download/dify-plugin-linux-amd64
+
           chmod +x dify-plugin-linux-amd64
 
-          echo "CLI tool location:"
-          pwd
-          ls -la dify-plugin-linux-amd64
+          echo "CLI tool downloaded:"
+          ls -la
 
-      - name: Get basic info from manifest
-        id: get_basic_info
+      - name: Get plugin info
+        id: plugin_info
         run: |
-          PLUGIN_NAME=$(grep "^name:" manifest.yaml | cut -d' ' -f2)
-          echo "Plugin name: $PLUGIN_NAME"
-          echo "plugin_name=$PLUGIN_NAME" >> $GITHUB_OUTPUT
+          PLUGIN_NAME=$(grep "^name:" manifest.yaml | awk '{print $2}')
+          VERSION=$(grep "^version:" manifest.yaml | awk '{print $2}')
 
-          VERSION=$(grep "^version:" manifest.yaml | cut -d' ' -f2)
+          echo "Plugin name: $PLUGIN_NAME"
           echo "Plugin version: $VERSION"
+
+          echo "plugin_name=$PLUGIN_NAME" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Package Plugin
+      - name: Package plugin
         id: package
         run: |
           cd $GITHUB_WORKSPACE
-          PACKAGE_NAME="${{ steps.get_basic_info.outputs.plugin_name }}-${{ steps.get_basic_info.outputs.version }}.difypkg"
+
+          PACKAGE_NAME="${{ steps.plugin_info.outputs.plugin_name }}-${{ steps.plugin_info.outputs.version }}.difypkg"
+
+          echo "Packaging plugin to: $PACKAGE_NAME"
+
           $RUNNER_TEMP/bin/dify-plugin-linux-amd64 plugin package . -o "$PACKAGE_NAME"
 
           echo "Package result:"
-          ls -la "$PACKAGE_NAME"
+          ls -lh "$PACKAGE_NAME"
+
           echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
 
-      - name: Upload package artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.package.outputs.package_name }}
-          path: ${{ steps.package.outputs.package_name }}
-
-      - name: Publish to GitHub Releases
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.get_basic_info.outputs.version }}
-          name: v${{ steps.get_basic_info.outputs.version }}
-          files: ${{ steps.package.outputs.package_name }}
-          generate_release_notes: true
+          tag_name: v${{ steps.plugin_info.outputs.version }}
+          name: v${{ steps.plugin_info.outputs.version }}
+          files: |
+            ${{ env.PACKAGE_NAME }}
+
+          body: |
+            ## Plugin Release
+
+            Plugin: ${{ steps.plugin_info.outputs.plugin_name }}
+
+            Version: ${{ steps.plugin_info.outputs.version }}
+
+            Automatically packaged and published by GitHub Actions.
+
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Print release info
+        run: |
+          echo "Release completed"
+          echo "Plugin: ${{ steps.plugin_info.outputs.plugin_name }}"
+          echo "Version: ${{ steps.plugin_info.outputs.version }}"
+          echo "Package: ${{ env.PACKAGE_NAME }}"
