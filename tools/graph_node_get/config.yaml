@@ -1,6 +1,6 @@
 identity:
   name: graph_node_get
-  author: obadakhalili
+  author: wxj
   label:
     en_US: Graph Node Get
     zh_Hans: 获取图节点

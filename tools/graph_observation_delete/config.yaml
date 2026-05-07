@@ -1,6 +1,6 @@
 identity:
   name: graph_observation_delete
-  author: obadakhalili
+  author: wxj
   label:
     en_US: Graph Observation Delete
     zh_Hans: 删除 Observation

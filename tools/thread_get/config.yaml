@@ -1,6 +1,6 @@
 identity:
   name: thread_get
-  author: obadakhalili
+  author: wxj
   label:
     en_US: Thread Get
     zh_Hans: 获取线程

@@ -1,6 +1,6 @@
 identity:
   name: user_get_threads
-  author: obadakhalili
+  author: wxj
   label:
     en_US: User Get Threads
     zh_Hans: 获取用户线程

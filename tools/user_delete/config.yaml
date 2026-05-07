@@ -1,6 +1,6 @@
 identity:
   name: user_delete
-  author: obadakhalili
+  author: wxj
   label:
     en_US: User Delete
     zh_Hans: 删除用户

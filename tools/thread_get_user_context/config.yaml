@@ -1,6 +1,6 @@
 identity:
   name: thread_get_user_context
-  author: obadakhalili
+  author: wxj
   label:
     en_US: Thread Get User Context
     zh_Hans: 获取线程用户上下文

@@ -1,6 +1,6 @@
 identity:
   name: thread_create
-  author: obadakhalili
+  author: wxj
   label:
     en_US: Thread Create
     zh_Hans: 创建线程

@@ -1,6 +1,6 @@
 identity:
   name: graph_edge_get_by_graph_id
-  author: obadakhalili
+  author: wxj
   label:
     en_US: Graph Edge Get By Graph ID
     zh_Hans: 按图谱 ID 获取边

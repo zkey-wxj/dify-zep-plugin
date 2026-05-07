@@ -1,6 +1,6 @@
 identity:
   name: thread_delete
-  author: obadakhalili
+  author: wxj
   label:
     en_US: Thread Delete
     zh_Hans: 删除线程

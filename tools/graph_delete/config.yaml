@@ -1,6 +1,6 @@
 identity:
   name: graph_delete
-  author: obadakhalili
+  author: wxj
   label:
     en_US: Graph Delete
     zh_Hans: 删除图谱

@@ -1,6 +1,6 @@
 identity:
   name: graph_observation_get
-  author: obadakhalili
+  author: wxj
   label:
     en_US: Graph Observation Get
     zh_Hans: 获取 Observation
