@@ -1,0 +1,101 @@
+identity:
+  name: graph_add
+  author: obadakhalili
+  label:
+    en_US: Graph Add
+    zh_Hans: 图谱添加
+
+description:
+  human:
+    en_US: Add data into graph via client.graph.add()
+    zh_Hans: 通过 client.graph.add() 向图谱添加数据
+  llm: Add data into graph via client.graph.add()
+
+parameters:
+  - name: data
+    type: string
+    required: true
+    label:
+      en_US: Data
+      zh_Hans: 数据
+    human_description:
+      en_US: Data payload
+      zh_Hans: 数据内容
+    llm_description: Data payload
+    form: llm
+  - name: data_type
+    type: select
+    required: true
+    options:
+      - value: text
+        label:
+          en_US: text
+          zh_Hans: 文本
+      - value: json
+        label:
+          en_US: json
+          zh_Hans: JSON
+      - value: message
+        label:
+          en_US: message
+          zh_Hans: 消息
+      - value: fact_triple
+        label:
+          en_US: fact_triple
+          zh_Hans: 事实三元组
+    label:
+      en_US: Data Type
+      zh_Hans: 数据类型
+    human_description:
+      en_US: Payload type
+      zh_Hans: 内容类型
+    llm_description: Payload type
+    form: llm
+  - name: user_id
+    type: string
+    required: false
+    label:
+      en_US: User ID
+      zh_Hans: 用户 ID
+    human_description:
+      en_US: Optional user_id
+      zh_Hans: 可选 user_id
+    llm_description: Optional user_id
+    form: llm
+  - name: graph_id
+    type: string
+    required: false
+    label:
+      en_US: Graph ID
+      zh_Hans: 图谱 ID
+    human_description:
+      en_US: Optional graph_id
+      zh_Hans: 可选 graph_id
+    llm_description: Optional graph_id
+    form: llm
+  - name: source_description
+    type: string
+    required: false
+    label:
+      en_US: Source Description
+      zh_Hans: 来源描述
+    human_description:
+      en_US: Optional source description
+      zh_Hans: 可选来源描述
+    llm_description: Optional source description
+    form: llm
+  - name: metadata_json
+    type: string
+    required: false
+    label:
+      en_US: Metadata JSON
+      zh_Hans: 元数据 JSON
+    human_description:
+      en_US: Optional JSON object metadata
+      zh_Hans: 可选 JSON 对象元数据
+    llm_description: Optional JSON object metadata
+    form: llm
+
+extra:
+  python:
+    source: tools/graph_add/main.py

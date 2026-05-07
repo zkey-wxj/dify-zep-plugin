@@ -1,0 +1,29 @@
+identity:
+  name: graph_node_get
+  author: obadakhalili
+  label:
+    en_US: Graph Node Get
+    zh_Hans: 获取图节点
+
+description:
+  human:
+    en_US: Get graph node by UUID via client.graph.node.get(uuid_)
+    zh_Hans: 通过 client.graph.node.get(uuid_) 按 UUID 获取图节点
+  llm: Get graph node by UUID via client.graph.node.get(uuid_)
+
+parameters:
+  - name: uuid
+    type: string
+    required: true
+    label:
+      en_US: UUID
+      zh_Hans: UUID
+    human_description:
+      en_US: Node UUID
+      zh_Hans: 节点 UUID
+    llm_description: Node UUID
+    form: llm
+
+extra:
+  python:
+    source: tools/graph_node_get/main.py

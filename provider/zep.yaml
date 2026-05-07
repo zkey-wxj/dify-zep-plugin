@@ -3,8 +3,10 @@ identity:
   name: zep
   label:
     en_US: Zep
+    zh_Hans: Zep
   description:
     en_US: Dify Zep plugin
+    zh_Hans: Dify Zep 插件
   icon: zep.png
   tags:
     - utilities
@@ -15,26 +17,49 @@ credentials_for_provider:
     required: true
     label:
       en_US: Zep API key
+      zh_Hans: Zep API 密钥
     placeholder:
       en_US: Enter your Zep API key
+      zh_Hans: 输入你的 Zep API 密钥
     help:
       en_US: Get the API key from your Zep project
+      zh_Hans: 从你的 Zep 项目获取 API 密钥
     url: https://app.getzep.com/projects
   zep_base_url:
     type: text-input
     required: false
     label:
       en_US: Base URL
+      zh_Hans: 基础 URL
     placeholder:
       en_US: https://api.getzep.com
+      zh_Hans: https://api.getzep.com
     help:
       en_US: Optional custom Zep API base URL
+      zh_Hans: 可选的自定义 Zep API 基础 URL
 
 tools:
-  - tools/init_session.yaml
-  - tools/get_session_memory.yaml
-  - tools/add_session_memory.yaml
-  - tools/search_user_graph.yaml
+  - tools/user_add/config.yaml
+  - tools/user_list_ordered/config.yaml
+  - tools/user_get/config.yaml
+  - tools/user_update/config.yaml
+  - tools/user_delete/config.yaml
+  - tools/user_get_threads/config.yaml
+  - tools/thread_create/config.yaml
+  - tools/thread_get/config.yaml
+  - tools/thread_delete/config.yaml
+  - tools/thread_add_messages/config.yaml
+  - tools/thread_get_user_context/config.yaml
+  - tools/graph_add/config.yaml
+  - tools/graph_create/config.yaml
+  - tools/graph_search/config.yaml
+  - tools/graph_node_get/config.yaml
+  - tools/graph_node_get_by_graph_id/config.yaml
+  - tools/graph_edge_get_by_graph_id/config.yaml
+  - tools/graph_episode_get/config.yaml
+  - tools/graph_delete/config.yaml
+  - tools/graph_observation_get/config.yaml
+  - tools/graph_observation_delete/config.yaml
 
 extra:
   python:

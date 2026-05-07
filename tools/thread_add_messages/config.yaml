@@ -1,0 +1,51 @@
+identity:
+  name: thread_add_messages
+  author: obadakhalili
+  label:
+    en_US: Thread Add Messages
+    zh_Hans: 线程添加消息
+
+description:
+  human:
+    en_US: Add messages and trigger memory update via client.thread.add_messages(thread_id)
+    zh_Hans: 通过 client.thread.add_messages(thread_id) 添加消息并触发记忆更新
+  llm: Add messages and trigger memory update via client.thread.add_messages(thread_id)
+
+parameters:
+  - name: thread_id
+    type: string
+    required: true
+    label:
+      en_US: Thread ID
+      zh_Hans: 线程 ID
+    human_description:
+      en_US: Thread ID
+      zh_Hans: 线程 ID
+    llm_description: Thread ID
+    form: llm
+  - name: messages_json
+    type: string
+    required: true
+    label:
+      en_US: Messages JSON
+      zh_Hans: 消息 JSON
+    human_description:
+      en_US: JSON array, each item includes content and role
+      zh_Hans: JSON 数组，每项包含 content 和 role
+    llm_description: JSON array, each item includes content and role
+    form: llm
+  - name: return_context
+    type: boolean
+    required: false
+    label:
+      en_US: Return Context
+      zh_Hans: 返回上下文
+    human_description:
+      en_US: Optional return_context flag
+      zh_Hans: 可选 return_context 标记
+    llm_description: Optional return_context flag
+    form: llm
+
+extra:
+  python:
+    source: tools/thread_add_messages/main.py

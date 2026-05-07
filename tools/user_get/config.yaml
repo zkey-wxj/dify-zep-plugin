@@ -1,0 +1,29 @@
+identity:
+  name: user_get
+  author: obadakhalili
+  label:
+    en_US: User Get
+    zh_Hans: 获取用户
+
+description:
+  human:
+    en_US: Get user detail via client.user.get(user_id)
+    zh_Hans: 通过 client.user.get(user_id) 获取用户详情
+  llm: Get user detail via client.user.get(user_id)
+
+parameters:
+  - name: user_id
+    type: string
+    required: true
+    label:
+      en_US: User ID
+      zh_Hans: 用户 ID
+    human_description:
+      en_US: User ID
+      zh_Hans: 用户 ID
+    llm_description: User ID
+    form: llm
+
+extra:
+  python:
+    source: tools/user_get/main.py

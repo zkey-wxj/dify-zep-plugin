@@ -1,0 +1,29 @@
+identity:
+  name: graph_episode_get
+  author: obadakhalili
+  label:
+    en_US: Graph Episode Get
+    zh_Hans: 获取 Episode
+
+description:
+  human:
+    en_US: Get episode by UUID via client.graph.episode.get(uuid_)
+    zh_Hans: 通过 client.graph.episode.get(uuid_) 按 UUID 获取 Episode
+  llm: Get episode by UUID via client.graph.episode.get(uuid_)
+
+parameters:
+  - name: uuid
+    type: string
+    required: true
+    label:
+      en_US: UUID
+      zh_Hans: UUID
+    human_description:
+      en_US: Episode UUID
+      zh_Hans: Episode UUID
+    llm_description: Episode UUID
+    form: llm
+
+extra:
+  python:
+    source: tools/graph_episode_get/main.py

@@ -1,0 +1,98 @@
+identity:
+  name: graph_search
+  author: obadakhalili
+  label:
+    en_US: Graph Search
+    zh_Hans: 图谱搜索
+
+description:
+  human:
+    en_US: Semantic search in graph via client.graph.search()
+    zh_Hans: 通过 client.graph.search() 在图谱中语义搜索
+  llm: Semantic search in graph via client.graph.search()
+
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+      zh_Hans: 查询
+    human_description:
+      en_US: Search query
+      zh_Hans: 搜索查询
+    llm_description: Search query
+    form: llm
+  - name: user_id
+    type: string
+    required: false
+    label:
+      en_US: User ID
+      zh_Hans: 用户 ID
+    human_description:
+      en_US: Optional user_id
+      zh_Hans: 可选 user_id
+    llm_description: Optional user_id
+    form: llm
+  - name: graph_id
+    type: string
+    required: false
+    label:
+      en_US: Graph ID
+      zh_Hans: 图谱 ID
+    human_description:
+      en_US: Optional graph_id
+      zh_Hans: 可选 graph_id
+    llm_description: Optional graph_id
+    form: llm
+  - name: scope
+    type: select
+    required: false
+    options:
+      - value: edges
+        label:
+          en_US: edges
+          zh_Hans: 边
+      - value: nodes
+        label:
+          en_US: nodes
+          zh_Hans: 节点
+      - value: episodes
+        label:
+          en_US: episodes
+          zh_Hans: 事件
+      - value: thread_summaries
+        label:
+          en_US: thread_summaries
+          zh_Hans: 线程摘要
+      - value: observations
+        label:
+          en_US: observations
+          zh_Hans: 观察
+      - value: auto
+        label:
+          en_US: auto
+          zh_Hans: 自动
+    label:
+      en_US: Scope
+      zh_Hans: 范围
+    human_description:
+      en_US: Optional search scope
+      zh_Hans: 可选搜索范围
+    llm_description: Optional search scope
+    form: llm
+  - name: limit
+    type: number
+    required: false
+    label:
+      en_US: Limit
+      zh_Hans: 限制数量
+    human_description:
+      en_US: Optional result limit
+      zh_Hans: 可选结果数量限制
+    llm_description: Optional result limit
+    form: llm
+
+extra:
+  python:
+    source: tools/graph_search/main.py

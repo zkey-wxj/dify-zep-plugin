@@ -1,0 +1,62 @@
+identity:
+  name: thread_get
+  author: obadakhalili
+  label:
+    en_US: Thread Get
+    zh_Hans: 获取线程
+
+description:
+  human:
+    en_US: Get thread detail via client.thread.get(thread_id)
+    zh_Hans: 通过 client.thread.get(thread_id) 获取线程详情
+  llm: Get thread detail via client.thread.get(thread_id)
+
+parameters:
+  - name: thread_id
+    type: string
+    required: true
+    label:
+      en_US: Thread ID
+      zh_Hans: 线程 ID
+    human_description:
+      en_US: Thread ID
+      zh_Hans: 线程 ID
+    llm_description: Thread ID
+    form: llm
+  - name: limit
+    type: number
+    required: false
+    label:
+      en_US: Limit
+      zh_Hans: 限制数量
+    human_description:
+      en_US: Optional limit
+      zh_Hans: 可选限制数量
+    llm_description: Optional limit
+    form: llm
+  - name: cursor
+    type: number
+    required: false
+    label:
+      en_US: Cursor
+      zh_Hans: 游标
+    human_description:
+      en_US: Optional cursor
+      zh_Hans: 可选游标
+    llm_description: Optional cursor
+    form: llm
+  - name: lastn
+    type: number
+    required: false
+    label:
+      en_US: Last N
+      zh_Hans: 最近 N 条
+    human_description:
+      en_US: Optional lastn
+      zh_Hans: 可选最近 N 条
+    llm_description: Optional lastn
+    form: llm
+
+extra:
+  python:
+    source: tools/thread_get/main.py

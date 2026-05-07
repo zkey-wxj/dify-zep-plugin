@@ -1,0 +1,29 @@
+identity:
+  name: graph_delete
+  author: obadakhalili
+  label:
+    en_US: Graph Delete
+    zh_Hans: 删除图谱
+
+description:
+  human:
+    en_US: Delete graph via client.graph.delete(graph_id)
+    zh_Hans: 通过 client.graph.delete(graph_id) 删除图谱
+  llm: Delete graph via client.graph.delete(graph_id)
+
+parameters:
+  - name: graph_id
+    type: string
+    required: true
+    label:
+      en_US: Graph ID
+      zh_Hans: 图谱 ID
+    human_description:
+      en_US: Graph ID
+      zh_Hans: 图谱 ID
+    llm_description: Graph ID
+    form: llm
+
+extra:
+  python:
+    source: tools/graph_delete/main.py

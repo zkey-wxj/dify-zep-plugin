@@ -1,0 +1,29 @@
+identity:
+  name: graph_observation_delete
+  author: obadakhalili
+  label:
+    en_US: Graph Observation Delete
+    zh_Hans: 删除 Observation
+
+description:
+  human:
+    en_US: Delete fact/observation (currently unavailable in installed SDK)
+    zh_Hans: 删除 Fact/Observation（当前已安装 SDK 不支持）
+  llm: Delete fact/observation (currently unavailable in installed SDK)
+
+parameters:
+  - name: uuid
+    type: string
+    required: true
+    label:
+      en_US: UUID
+      zh_Hans: UUID
+    human_description:
+      en_US: Fact UUID
+      zh_Hans: Fact UUID
+    llm_description: Fact UUID
+    form: llm
+
+extra:
+  python:
+    source: tools/graph_observation_delete/main.py

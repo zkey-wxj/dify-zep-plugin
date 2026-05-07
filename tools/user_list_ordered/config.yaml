@@ -1,0 +1,73 @@
+identity:
+  name: user_list_ordered
+  author: obadakhalili
+  label:
+    en_US: User List Ordered
+    zh_Hans: 分页排序获取用户列表
+
+description:
+  human:
+    en_US: List users with pagination and sorting via client.user.list_ordered()
+    zh_Hans: 通过 client.user.list_ordered() 分页排序获取用户列表
+  llm: List users with pagination and sorting via client.user.list_ordered()
+
+parameters:
+  - name: page_number
+    type: number
+    required: false
+    label:
+      en_US: Page Number
+      zh_Hans: 页码
+    human_description:
+      en_US: Optional page number
+      zh_Hans: 可选页码
+    llm_description: Optional page number
+    form: llm
+  - name: page_size
+    type: number
+    required: false
+    label:
+      en_US: Page Size
+      zh_Hans: 每页数量
+    human_description:
+      en_US: Optional page size
+      zh_Hans: 可选每页数量
+    llm_description: Optional page size
+    form: llm
+  - name: search
+    type: string
+    required: false
+    label:
+      en_US: Search
+      zh_Hans: 搜索
+    human_description:
+      en_US: Optional search keyword
+      zh_Hans: 可选搜索关键词
+    llm_description: Optional search keyword
+    form: llm
+  - name: order_by
+    type: string
+    required: false
+    label:
+      en_US: Order By
+      zh_Hans: 排序字段
+    human_description:
+      en_US: Optional order field
+      zh_Hans: 可选排序字段
+    llm_description: Optional order field
+    form: llm
+  - name: asc
+    type: boolean
+    required: false
+    label:
+      en_US: Ascending
+      zh_Hans: 升序
+    human_description:
+      en_US: Optional ascending sort flag
+      zh_Hans: 可选升序标记
+    llm_description: Optional ascending sort flag
+    form: llm
+
+extra:
+  python:
+    source: tools/user_list_ordered/main.py

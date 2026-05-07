@@ -1,0 +1,51 @@
+identity:
+  name: graph_create
+  author: obadakhalili
+  label:
+    en_US: Graph Create
+    zh_Hans: 创建图谱
+
+description:
+  human:
+    en_US: Create an independent graph via client.graph.create()
+    zh_Hans: 通过 client.graph.create() 创建独立图谱
+  llm: Create an independent graph via client.graph.create()
+
+parameters:
+  - name: graph_id
+    type: string
+    required: true
+    label:
+      en_US: Graph ID
+      zh_Hans: 图谱 ID
+    human_description:
+      en_US: Graph ID
+      zh_Hans: 图谱 ID
+    llm_description: Graph ID
+    form: llm
+  - name: name
+    type: string
+    required: false
+    label:
+      en_US: Name
+      zh_Hans: 名称
+    human_description:
+      en_US: Optional graph name
+      zh_Hans: 可选图谱名称
+    llm_description: Optional graph name
+    form: llm
+  - name: description
+    type: string
+    required: false
+    label:
+      en_US: Description
+      zh_Hans: 描述
+    human_description:
+      en_US: Optional graph description
+      zh_Hans: 可选图谱描述
+    llm_description: Optional graph description
+    form: llm
+
+extra:
+  python:
+    source: tools/graph_create/main.py

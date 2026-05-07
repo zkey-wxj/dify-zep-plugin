@@ -1,0 +1,29 @@
+identity:
+  name: user_get_threads
+  author: obadakhalili
+  label:
+    en_US: User Get Threads
+    zh_Hans: 获取用户线程
+
+description:
+  human:
+    en_US: Get all threads for user via client.user.get_threads(user_id)
+    zh_Hans: 通过 client.user.get_threads(user_id) 获取用户所有线程
+  llm: Get all threads for user via client.user.get_threads(user_id)
+
+parameters:
+  - name: user_id
+    type: string
+    required: true
+    label:
+      en_US: User ID
+      zh_Hans: 用户 ID
+    human_description:
+      en_US: User ID
+      zh_Hans: 用户 ID
+    llm_description: User ID
+    form: llm
+
+extra:
+  python:
+    source: tools/user_get_threads/main.py

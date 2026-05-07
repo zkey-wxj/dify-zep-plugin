@@ -1,0 +1,29 @@
+identity:
+  name: graph_observation_get
+  author: obadakhalili
+  label:
+    en_US: Graph Observation Get
+    zh_Hans: 获取 Observation
+
+description:
+  human:
+    en_US: Get fact/observation via client.graph.observation.get(uuid_)
+    zh_Hans: 通过 client.graph.observation.get(uuid_) 获取 Fact/Observation
+  llm: Get fact/observation via client.graph.observation.get(uuid_)
+
+parameters:
+  - name: uuid
+    type: string
+    required: true
+    label:
+      en_US: UUID
+      zh_Hans: UUID
+    human_description:
+      en_US: Fact UUID
+      zh_Hans: Fact UUID
+    llm_description: Fact UUID
+    form: llm
+
+extra:
+  python:
+    source: tools/graph_observation_get/main.py

@@ -1,0 +1,51 @@
+identity:
+  name: graph_node_get_by_graph_id
+  author: obadakhalili
+  label:
+    en_US: Graph Node Get By Graph ID
+    zh_Hans: 按图谱 ID 获取节点
+
+description:
+  human:
+    en_US: Get all nodes in graph via client.graph.node.get_by_graph_id(graph_id)
+    zh_Hans: 通过 client.graph.node.get_by_graph_id(graph_id) 获取图谱全部节点
+  llm: Get all nodes in graph via client.graph.node.get_by_graph_id(graph_id)
+
+parameters:
+  - name: graph_id
+    type: string
+    required: true
+    label:
+      en_US: Graph ID
+      zh_Hans: 图谱 ID
+    human_description:
+      en_US: Graph ID
+      zh_Hans: 图谱 ID
+    llm_description: Graph ID
+    form: llm
+  - name: limit
+    type: number
+    required: false
+    label:
+      en_US: Limit
+      zh_Hans: 限制数量
+    human_description:
+      en_US: Optional limit
+      zh_Hans: 可选限制数量
+    llm_description: Optional limit
+    form: llm
+  - name: uuid_cursor
+    type: string
+    required: false
+    label:
+      en_US: UUID Cursor
+      zh_Hans: UUID 游标
+    human_description:
+      en_US: Optional pagination cursor
+      zh_Hans: 可选分页游标
+    llm_description: Optional pagination cursor
+    form: llm
+
+extra:
+  python:
+    source: tools/graph_node_get_by_graph_id/main.py
