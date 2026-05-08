@@ -9,6 +9,9 @@ import sys
 from dify_plugin import Tool
 from dify_plugin.entities.model.message import SystemPromptMessage, UserPromptMessage
 from dify_plugin.entities.tool import ToolInvokeMessage
+from utils.logger import get_logger
+
+logger = get_logger('relation_type_extract')
 
 CURRENT_DIR = os.path.dirname(__file__)
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
@@ -21,6 +24,7 @@ from utils.entity_extractor import discover_relation_types_from_documents  # noq
 class RelationTypeExtractTool(Tool):
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
         try:
+            logger.info('invoke params=%s', json.dumps(tool_parameters, ensure_ascii=False, default=str))
             text = str(tool_parameters.get("text") or "").strip()
             if not text:
                 raise ValueError("text 参数不能为空")
@@ -45,6 +49,7 @@ class RelationTypeExtractTool(Tool):
             yield self.create_variable_message("relation_types", result_payload)
             yield self.create_text_message(json.dumps(result_payload, ensure_ascii=False))
         except Exception as e:
+            logger.exception('invoke failed')
             err = str(e)
             yield self.create_json_message({"status": "error", "error": err})
             yield self.create_text_message(err)
@@ -84,3 +89,5 @@ class RelationTypeExtractTool(Tool):
             seen.add(key)
             result.append(normalized)
         return result
+
+

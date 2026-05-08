@@ -37,6 +37,16 @@ credentials_for_provider:
     help:
       en_US: Optional custom Zep API base URL
       zh_Hans: 可选的自定义 Zep API 基础 URL
+  model:
+    type: model-selector
+    scope: llm
+    required: false
+    label:
+      en_US: Model
+      zh_Hans: 模型
+    help:
+      en_US: Optional default model for reverse invocation tools
+      zh_Hans: 可选默认模型，用于反向调用类工具
 
 tools:
   - tools/graph_add/config.yaml

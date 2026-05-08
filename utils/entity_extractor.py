@@ -818,30 +818,27 @@ ENTITY_EXTRACTION_EXAMPLES = {
     "default": [
         """Example 1:
 
-Entity_types: [person, organization, location, concept, event]
+Entity_types: [person, organization, location, product, technology, metric, time, event, concept]
 Text:
 ```
-张三是北京大学的哲学系教授，主要研究道家思想和易经理论。他在2023年发表了关于阴阳五行学说的论文，引起了学术界的广泛关注。该论文探讨了道家九爻体系在现代心理学中的应用。
-
-李四是清华大学的研究员，与张三有密切的合作关系。两人共同主持了"中国传统哲学现代化"学术研讨会。
+Acme Cloud 在 2024 年发布了 AuroraDB 3.0。该版本基于 Raft 共识协议，并在多可用区部署中将平均故障切换时间降至 30 秒。官方技术报告《AuroraDB 3.0 Availability Benchmark》记录了这组数据。发布会在上海举办，平台团队和数据库团队共同参与。
 ```
 
 Output:
-("entity"{tuple_delimiter}"张三"{tuple_delimiter}"person"{tuple_delimiter}"张三是北京大学哲学系教授，研究道家思想和易经理论"){record_delimiter}
-("entity"{tuple_delimiter}"北京大学"{tuple_delimiter}"organization"{tuple_delimiter}"北京大学是张三任职的高等学府"){record_delimiter}
-("entity"{tuple_delimiter}"道家思想"{tuple_delimiter}"concept"{tuple_delimiter}"道家思想是张三的主要研究领域之一"){record_delimiter}
-("entity"{tuple_delimiter}"易经"{tuple_delimiter}"concept"{tuple_delimiter}"易经是张三研究的理论体系"){record_delimiter}
-("entity"{tuple_delimiter}"阴阳五行"{tuple_delimiter}"concept"{tuple_delimiter}"阴阳五行学说是张三论文的主题"){record_delimiter}
-("entity"{tuple_delimiter}"道家九爻"{tuple_delimiter}"concept"{tuple_delimiter}"道家九爻体系是张三论文中探讨的理论框架"){record_delimiter}
-("entity"{tuple_delimiter}"李四"{tuple_delimiter}"person"{tuple_delimiter}"李四是清华大学的研究员，与张三有合作关系"){record_delimiter}
-("entity"{tuple_delimiter}"清华大学"{tuple_delimiter}"organization"{tuple_delimiter}"清华大学是李四任职的机构"){record_delimiter}
-("entity"{tuple_delimiter}"中国传统哲学现代化研讨会"{tuple_delimiter}"event"{tuple_delimiter}"张三和李四共同主持的学术研讨会"){record_delimiter}
-("relationship"{tuple_delimiter}"张三"{tuple_delimiter}"北京大学"{tuple_delimiter}"张三是北京大学的教授"{tuple_delimiter}"任职, 学术机构"{tuple_delimiter}9){record_delimiter}
-("relationship"{tuple_delimiter}"张三"{tuple_delimiter}"道家思想"{tuple_delimiter}"张三主要研究道家思想"{tuple_delimiter}"研究领域, 学术专长"{tuple_delimiter}10){record_delimiter}
-("relationship"{tuple_delimiter}"张三"{tuple_delimiter}"李四"{tuple_delimiter}"张三和李四有密切合作关系，共同主持研讨会"{tuple_delimiter}"学术合作, 共同研究"{tuple_delimiter}8){record_delimiter}
-("relationship"{tuple_delimiter}"李四"{tuple_delimiter}"清华大学"{tuple_delimiter}"李四是清华大学的研究员"{tuple_delimiter}"任职, 工作单位"{tuple_delimiter}9){record_delimiter}
-("relationship"{tuple_delimiter}"道家九爻"{tuple_delimiter}"阴阳五行"{tuple_delimiter}"道家九爻是阴阳五行学说的一部分"{tuple_delimiter}"理论组成, 包含关系"{tuple_delimiter}7){record_delimiter}
-("content_keywords"{tuple_delimiter}"道家哲学, 易经理论, 学术研究, 传统哲学现代化"){completion_delimiter}
+("entity"{tuple_delimiter}"Acme Cloud"{tuple_delimiter}"organization"{tuple_delimiter}"Acme Cloud 发布了 AuroraDB 3.0"){record_delimiter}
+("entity"{tuple_delimiter}"AuroraDB 3.0"{tuple_delimiter}"product"{tuple_delimiter}"AuroraDB 3.0 是发布版本"){record_delimiter}
+("entity"{tuple_delimiter}"Raft 共识协议"{tuple_delimiter}"technology"{tuple_delimiter}"该版本基于 Raft 共识协议"){record_delimiter}
+("entity"{tuple_delimiter}"30 秒"{tuple_delimiter}"metric"{tuple_delimiter}"平均故障切换时间降至 30 秒"){record_delimiter}
+("entity"{tuple_delimiter}"2024 年"{tuple_delimiter}"time"{tuple_delimiter}"发布时间为 2024 年"){record_delimiter}
+("entity"{tuple_delimiter}"AuroraDB 3.0 Availability Benchmark"{tuple_delimiter}"document"{tuple_delimiter}"官方技术报告记录了可用性数据"){record_delimiter}
+("entity"{tuple_delimiter}"上海"{tuple_delimiter}"location"{tuple_delimiter}"发布会举办地点是上海"){record_delimiter}
+("entity"{tuple_delimiter}"发布会"{tuple_delimiter}"event"{tuple_delimiter}"发布会是相关活动事件"){record_delimiter}
+("relationship"{tuple_delimiter}"Acme Cloud"{tuple_delimiter}"AuroraDB 3.0"{tuple_delimiter}"Acme Cloud 发布了 AuroraDB 3.0"{tuple_delimiter}"发布, 拥有"{tuple_delimiter}9){record_delimiter}
+("relationship"{tuple_delimiter}"AuroraDB 3.0"{tuple_delimiter}"Raft 共识协议"{tuple_delimiter}"AuroraDB 3.0 基于 Raft 共识协议"{tuple_delimiter}"基于, 使用"{tuple_delimiter}8){record_delimiter}
+("relationship"{tuple_delimiter}"AuroraDB 3.0"{tuple_delimiter}"30 秒"{tuple_delimiter}"该版本将平均故障切换时间降至 30 秒"{tuple_delimiter}"指标, 改善"{tuple_delimiter}8){record_delimiter}
+("relationship"{tuple_delimiter}"AuroraDB 3.0 Availability Benchmark"{tuple_delimiter}"30 秒"{tuple_delimiter}"技术报告记录了该指标"{tuple_delimiter}"记录, 说明"{tuple_delimiter}7){record_delimiter}
+("relationship"{tuple_delimiter}"发布会"{tuple_delimiter}"上海"{tuple_delimiter}"发布会在上海举办"{tuple_delimiter}"位于, 举办于"{tuple_delimiter}9){record_delimiter}
+("content_keywords"{tuple_delimiter}"产品发布, 可用性, 共识协议, 指标优化"){completion_delimiter}
 #############################""",
     ]
 }
@@ -905,20 +902,24 @@ class EntityExtractor:
     """
     基于 GraphRAG 的 LLM 实体抽取器
 
-    使用阿里云 qwen-plus 模型进行实体和关系抽取
+    使用注入的 LLM 调用函数进行实体和关系抽取
     """
 
-    # 默认实体类型
+    # 默认实体类型（领域中性）
     DEFAULT_ENTITY_TYPES = [
-        "Person",      # 人物
-        "Organization",# 组织/机构
-        "Location",    # 地点
-        "Concept",     # 概念/理论
-        "Method",      # 方法/技能
-        "Event",       # 事件
-        "Object",      # 物品/产品
-        "Time",        # 时间
-        "Category",    # 类别/分类
+        "Person",
+        "Organization",
+        "Location",
+        "Event",
+        "Concept",
+        "Method",
+        "Product",
+        "Document",
+        "Technology",
+        "Metric",
+        "Time",
+        "Object",
+        "Category",
     ]
 
     # 实体类型中文映射
@@ -940,6 +941,11 @@ class EntityExtractor:
         "事件": "Event",
         "物品": "Object",
         "产品": "Product",
+        "文档": "Document",
+        "文件": "Document",
+        "技术": "Technology",
+        "指标": "Metric",
+        "数据": "Metric",
         "时间": "Time",
         "日期": "Date",
         "类别": "Category",
@@ -1002,7 +1008,7 @@ class EntityExtractor:
     def _get_entity_types_from_ontology(self, ontology: Dict[str, Any] = None) -> List[str]:
         """从本体定义中提取实体类型"""
         # 基础类型（始终包含）
-        base_types = ["Person", "Organization", "Location", "Concept", "Event", "Method", "Object", "Time"]
+        base_types = list(self.entity_types) if self.entity_types else list(self.DEFAULT_ENTITY_TYPES)
 
         if not ontology:
             return base_types
@@ -1022,14 +1028,18 @@ class EntityExtractor:
         """
         # 基础类型描述（fallback）
         base_descriptions = {
-            "Person": "人物：具有姓名的个人，包括真实人物、虚构人物、角色等",
-            "Organization": "组织：公司、机构、团体、学校、政府机关等有组织的实体",
-            "Location": "地点：地理名称、城市、国家、场所、建筑物等",
-            "Concept": "概念：理论、思想、学说、原则、抽象概念等（如：阴阳、五行、相对论）",
-            "Method": "方法：技术、策略、算法、流程、操作方式等",
-            "Event": "事件：历史事件、活动、会议、战争、事故等有时间发生的事情",
-            "Object": "物品/作品：产品、书籍、工具、艺术品等具体对象",
-            "Time": "时间：日期、年份、时代、时间段等时间相关实体",
+            "Person": "人物：具体个人、角色、作者、发言人等",
+            "Organization": "组织：公司、机构、团队、学校、部门等",
+            "Location": "地点：国家、城市、园区、建筑、空间位置等",
+            "Concept": "概念：理论、规则、术语、抽象思想等",
+            "Method": "方法：流程、算法、策略、操作方式等",
+            "Event": "事件：发布、会议、活动、事故、交易等有发生过程的事项",
+            "Object": "对象：具体事物、设备、材料、作品等",
+            "Product": "产品：软件、硬件、服务、SKU、型号等",
+            "Document": "文档：标准、报告、论文、合同、说明文档等",
+            "Technology": "技术：框架、协议、工具链、平台技术等",
+            "Metric": "指标：KPI、统计值、测量口径、数值指标等",
+            "Time": "时间：日期、时刻、周期、时间范围等",
         }
 
         if entity_types is None:
@@ -1415,63 +1425,73 @@ class EntityExtractor:
         """
         根据实体名称和描述推断实体类型
 
-        用于处理 LLM 返回通用类型的情况
+        用于处理 LLM 返回通用类型的情况。
+        该推断器保持“弱假设”：仅在存在明显模式时归类，否则返回 Entity。
         """
-        import re
-
         name_lower = entity_name.lower()
         desc_lower = description.lower()
 
-        # 哲学/概念类关键词
-        concept_keywords = [
-            '理论', '概念', '体系', '原理', '思想', '学说',
-            'theory', 'concept', 'system', 'principle', 'ideology',
-            '阴阳', '五行', '八卦', '易经', '道德', '禅', '佛', '道家', '儒家',
-            '仁', '义', '礼', '智', '信', '孝', '悌'
-        ]
-        for kw in concept_keywords:
-            if kw in name_lower or kw in desc_lower:
-                return "Concept"
-
-        # 方法/技能类关键词
-        method_keywords = [
-            '方法', '技巧', '技术', '技能', '策略', '算法',
-            'method', 'technique', 'skill', 'strategy', 'algorithm'
-        ]
-        for kw in method_keywords:
-            if kw in name_lower or kw in desc_lower:
-                return "Method"
-
-        # 事件类关键词
-        event_keywords = [
-            '事件', '活动', '会议', '战争', '革命', '运动',
-            'event', 'activity', 'conference', 'war', 'revolution', 'movement'
-        ]
-        for kw in event_keywords:
-            if kw in name_lower or kw in desc_lower:
-                return "Event"
-
-        # 书籍/作品（带书名号的通常是作品，也可能是概念）
-        if '《' in entity_name and '》' in entity_name:
-            # 如果描述中包含理论、体系等词，则是概念
-            if any(kw in desc_lower for kw in ['理论', '体系', '经典', '著作', '学说']):
-                return "Concept"
-            # 否则作为作品对象
-            return "Object"
-
-        # 时间/日期关键词
-        time_keywords = [
-            '年', '月', '日', '时', '世纪', '年代',
-            'year', 'month', 'day', 'century', 'era'
-        ]
+        # 时间：明显时间格式/关键词
+        if re.search(r"\b(19|20)\d{2}\b", entity_name) or re.search(r"\d{4}[-/]\d{1,2}[-/]\d{1,2}", entity_name):
+            return "Time"
+        time_keywords = ["年", "月", "日", "时", "季度", "year", "month", "day", "quarter"]
         if any(kw in name_lower for kw in time_keywords):
             return "Time"
 
-        # 人物类 - 检查人名模式（中文2-4字姓氏+名字，或英文人名）
-        if re.match(r'^[\u4e00-\u9fa5]{2,4}$', entity_name) and '大学' not in entity_name and '公司' not in entity_name:
+        # 组织
+        org_keywords = [
+            "公司", "集团", "大学", "学院", "研究院", "委员会", "部门", "实验室",
+            "inc", "corp", "company", "university", "institute", "lab", "team",
+        ]
+        if any(kw in name_lower for kw in org_keywords):
+            return "Organization"
+
+        # 地点
+        location_keywords = [
+            "省", "市", "区", "县", "路", "街", "园区", "大厦", "机场", "车站",
+            "city", "country", "province", "street", "park",
+        ]
+        if any(kw in name_lower for kw in location_keywords):
+            return "Location"
+
+        # 事件
+        event_keywords = [
+            "发布会", "会议", "峰会", "比赛", "活动", "事故", "收购", "并购",
+            "launch", "summit", "meeting", "event", "incident", "acquisition",
+        ]
+        if any(kw in name_lower for kw in event_keywords):
+            return "Event"
+
+        # 文档
+        doc_keywords = ["报告", "白皮书", "论文", "规范", "标准", "文档", "report", "paper", "spec", "standard"]
+        if any(kw in name_lower for kw in doc_keywords):
+            return "Document"
+
+        # 技术/方法
+        method_keywords = ["算法", "协议", "框架", "模型", "方法", "流程", "algorithm", "protocol", "framework", "model"]
+        if any(kw in name_lower or kw in desc_lower for kw in method_keywords):
+            return "Method"
+
+        # 产品
+        product_keywords = ["系统", "平台", "产品", "版本", "软件", "应用", "platform", "system", "product", "version", "app"]
+        if any(kw in name_lower for kw in product_keywords):
+            return "Product"
+
+        # 指标
+        metric_keywords = ["率", "比率", "得分", "指数", "增长", "下降", "ms", "秒", "%", "score", "rate", "latency"]
+        if any(kw in name_lower for kw in metric_keywords):
+            return "Metric"
+
+        # 概念
+        concept_keywords = ["理论", "概念", "原则", "思想", "策略", "theory", "concept", "principle", "idea"]
+        if any(kw in name_lower or kw in desc_lower for kw in concept_keywords):
+            return "Concept"
+
+        # 人物：放在靠后，避免把多数短词都误判为人物
+        if re.match(r"^[\u4e00-\u9fa5]{2,4}$", entity_name):
             return "Person"
 
-        # 默认返回通用实体类型
+        # 默认通用类型
         return "Entity"
 
     def _split_text_smartly(self, text: str) -> List[str]:

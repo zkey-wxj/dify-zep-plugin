@@ -10,6 +10,9 @@ import sys
 from dify_plugin import Tool
 from dify_plugin.entities.model.message import SystemPromptMessage, UserPromptMessage
 from dify_plugin.entities.tool import ToolInvokeMessage
+from utils.logger import get_logger
+
+logger = get_logger('text_to_knowledge_graph')
 from utils.zep_entity_reader import ZepEntityReader
 
 CURRENT_DIR = os.path.dirname(__file__)
@@ -26,6 +29,7 @@ from utils.entity_extractor import (  # noqa: E402
 class TextToKnowledgeGraphTool(Tool):
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
         try:
+            logger.info('invoke params=%s', json.dumps(tool_parameters, ensure_ascii=False, default=str))
             text = str(tool_parameters.get("text") or "").strip()
             if not text:
                 raise ValueError("text 参数不能为空")
@@ -112,6 +116,7 @@ class TextToKnowledgeGraphTool(Tool):
             yield self.create_text_message(json.dumps(result_payload, ensure_ascii=False))
 
         except Exception as e:
+            logger.exception('invoke failed')
             err = str(e)
             yield self.create_json_message({"status": "error", "error": err})
             yield self.create_text_message(err)
@@ -231,3 +236,5 @@ class TextToKnowledgeGraphTool(Tool):
             seen.add(key)
             result.append(normalized)
         return result
+
+
