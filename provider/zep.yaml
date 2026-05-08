@@ -39,18 +39,12 @@ credentials_for_provider:
       zh_Hans: 可选的自定义 Zep API 基础 URL
 
 tools:
-  - tools/user_add/config.yaml
-  - tools/user_list_ordered/config.yaml
-  - tools/user_get/config.yaml
-  - tools/user_update/config.yaml
-  - tools/user_delete/config.yaml
-  - tools/user_get_threads/config.yaml
-  - tools/thread_create/config.yaml
-  - tools/thread_get/config.yaml
-  - tools/thread_delete/config.yaml
-  - tools/thread_add_messages/config.yaml
-  - tools/thread_get_user_context/config.yaml
   - tools/graph_add/config.yaml
+  - tools/text_to_knowledge_graph/config.yaml
+  - tools/entity_extract/config.yaml
+  - tools/relation_extract/config.yaml
+  - tools/entity_type_extract/config.yaml
+  - tools/relation_type_extract/config.yaml
   - tools/graph_create/config.yaml
   - tools/graph_search/config.yaml
   - tools/graph_node_get/config.yaml

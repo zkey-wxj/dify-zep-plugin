@@ -1,77 +1,68 @@
 # Dify Zep Plugin
 
-A plugin for Dify that adds memory management using Zep. This helps your AI assistant remember past conversations and user information.
-
-[View on GitHub](https://github.com/obadakhalili/dify-zep-plugin)
+This plugin exposes Zep Cloud SDK methods as Dify tools.
 
 ## Setup
 
-1. Install the plugin in your Dify workspace
-2. Create a Zep project and get an API key
-3. Add your Zep API key to authorize the plugin
+1. Install the plugin in your Dify workspace.
+2. Create a Zep project and get an API key.
+3. Configure credentials:
+   - `zep_api_key` (required)
+   - `zep_base_url` (optional, default `https://api.getzep.com`)
 
-   ![authorize-1](_assets/authorize-1.png)
-   ![authorize-2](_assets/authorize-2.png)
+## Local Run
 
-## Tools
+Use the project virtual environment:
 
-### 1. Init Session
+```bash
+.venv/Scripts/python.exe -m main
+```
 
-Creates a Zep user and session if they don't already exist. Must be used first before other tools.
+## Tool List
 
-**Parameters:**
+Current tools are mapped one-to-one with SDK methods (no action router).
 
-- User ID - Unique identifier for the user
-- Session ID - Unique identifier for the conversation
+### User
 
-  ![init-session](_assets/init-session.png)
+- `user_add` -> `client.user.add()`
+- `user_list_ordered` -> `client.user.list_ordered()`
+- `user_get` -> `client.user.get(user_id)`
+- `user_update` -> `client.user.update(user_id)`
+- `user_delete` -> `client.user.delete(user_id)`
+- `user_get_threads` -> `client.user.get_threads(user_id)`
 
-### 2. Add Message to Session
+### Thread
 
-Saves a message to the conversation memory.
+- `thread_create` -> `client.thread.create()`
+- `thread_get` -> `client.thread.get(thread_id)`
+- `thread_delete` -> `client.thread.delete(thread_id)`
+- `thread_add_messages` -> `client.thread.add_messages(thread_id)`
+- `thread_get_user_context` -> `client.thread.get_user_context(thread_id)`
 
-**Parameters:**
+### Graph
 
-- Session ID - The conversation to add to
-- Message - The text content to save
-- Role Type - Who sent the message (user or assistant)
+- `graph_add` -> `client.graph.add()`
+- `graph_create` -> `client.graph.create()`
+- `graph_search` -> `client.graph.search()`
+- `graph_node_get` -> `client.graph.node.get(uuid_)`
+- `graph_node_get_by_graph_id` -> `client.graph.node.get_by_graph_id(graph_id)`
+- `graph_edge_get_by_graph_id` -> `client.graph.edge.get_by_graph_id(graph_id)`
+- `graph_episode_get` -> `client.graph.episode.get(uuid_)`
+- `graph_delete` -> `client.graph.delete(graph_id)`
+- `graph_observation_get` -> `client.graph.observation.get(uuid_)`
+- `graph_observation_delete` -> reserved (see limitation below)
 
-  ![add-message.png](_assets/add-message.png)
+## Parameter Conventions
 
-### 3. Get Session Memory
+- `metadata_json`: JSON object string.
+- `messages_json`: JSON array string, each item must include:
+  - `content`
+  - `role`
+- Optional pagination fields:
+  - `page_number`, `page_size`
+  - `limit`, `cursor`, `uuid_cursor`
 
-Gets user memory relevant to the last messages in the conversation.
+## Known Limitation
 
-**Parameters:**
-
-- Session ID - The conversation to get relevant memory for
-- Last N Messages (optional) - Number of recent messages to check (max 50)
-- Minimum Rating (optional) - Only return memories above this relevance score
-
-  ![get-memory](_assets/get-memory.png)
-
-### 4. Search User Graph
-
-Search through a user's memory for relevant information.
-
-**Parameters:**
-
-- User ID - The user to search memories for
-- Query - What to search for in the memory
-
-  ![search-graph](_assets/search-graph.png)
-
-**Difference between `Get Session Memory` and `Search User Graph` tools:**
-
-- `Get Session Memory` uses the last n messages in the conversation to compose a query and search the user's memory for relevant information.
-- `Search User Graph` searches the user's memory for a query you provide.
-
-## Example workflow
-
-![workflow](_assets/workflow.png)
-
-## To-Dos:
-
-- [ ] What if the user want to use the plugin with different API keys from more than one project?
-- [ ] How to use outside workflow apps?
-- [ ] Use `return_context` in `memory.get()` to use context immediatley.
+- In current installed SDK (`zep-cloud 3.22.0`), `client.graph.observation.delete(uuid_)` is not exposed.
+- `graph_observation_delete` currently returns `NotImplementedError` explicitly.

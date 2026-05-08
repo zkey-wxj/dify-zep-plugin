@@ -1,0 +1,51 @@
+identity:
+  name: entity_type_extract
+  author: wxj
+  label:
+    en_US: Entity Type Extract
+    zh_Hans: 实体类型提取
+
+description:
+  human:
+    en_US: Extract entity types from text via reverse-invoked model
+    zh_Hans: 通过反向调用模型从文本提取实体类型
+  llm: Extract entity types from text via reverse-invoked model
+
+parameters:
+  - name: text
+    type: string
+    required: true
+    label:
+      en_US: Text
+      zh_Hans: 文本
+    human_description:
+      en_US: Input text for entity type extraction
+      zh_Hans: 用于实体类型提取的输入文本
+    llm_description: Input text for entity type extraction
+    form: llm
+  - name: model
+    type: model-selector
+    required: true
+    scope: llm
+    label:
+      en_US: Model
+      zh_Hans: 模型
+    human_description:
+      en_US: Model for reverse invocation extraction
+      zh_Hans: 用于反向调用抽取的模型
+    llm_description: LLM model config for extraction
+    form: form
+
+output_schema:
+  type: object
+  properties:
+    entity_types:
+      type: array
+      items:
+        type: string
+    count:
+      type: integer
+
+extra:
+  python:
+    source: tools/entity_type_extract/main.py

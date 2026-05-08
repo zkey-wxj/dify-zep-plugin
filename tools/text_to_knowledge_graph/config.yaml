@@ -1,0 +1,114 @@
+identity:
+  name: text_to_knowledge_graph
+  author: wxj
+  label:
+    en_US: Text To Knowledge Graph
+    zh_Hans: 文本生成知识图谱
+
+description:
+  human:
+    en_US: Extract entities and relations from text via reverse-invoked model, then write to Zep graph
+    zh_Hans: 通过反向调用模型从文本抽取实体关系并写入 Zep 图谱
+  llm: Extract entities and relations from text, then write to Zep graph via client.graph.add(type=fact_triple)
+
+parameters:
+  - name: text
+    type: string
+    required: true
+    label:
+      en_US: Text
+      zh_Hans: 文本
+    human_description:
+      en_US: Input text to build knowledge graph
+      zh_Hans: 用于构建知识图谱的输入文本
+    llm_description: Input text to extract entities and relations
+    form: llm
+  - name: entity_types
+    type: string
+    required: false
+    label:
+      en_US: Entity Types
+      zh_Hans: 实体类型
+    human_description:
+      en_US: Optional entity types, separated by commas/newlines
+      zh_Hans: 可选实体类型，使用逗号或换行分隔
+    llm_description: Optional entity types, separated by commas/newlines
+    form: llm
+  - name: relation_types
+    type: string
+    required: false
+    label:
+      en_US: Relation Types
+      zh_Hans: 关系类型
+    human_description:
+      en_US: Optional relation types, separated by commas/newlines
+      zh_Hans: 可选关系类型，使用逗号或换行分隔
+    llm_description: Optional relation types, separated by commas/newlines
+    form: llm
+  - name: graph_id
+    type: string
+    required: false
+    label:
+      en_US: Graph ID
+      zh_Hans: 图谱 ID
+    human_description:
+      en_US: Optional target graph id
+      zh_Hans: 可选目标图谱 ID
+    llm_description: Optional target graph id
+    form: llm
+  - name: user_id
+    type: string
+    required: false
+    label:
+      en_US: User ID
+      zh_Hans: 用户 ID
+    human_description:
+      en_US: Optional user id
+      zh_Hans: 可选用户 ID
+    llm_description: Optional user id
+    form: llm
+  - name: model
+    type: model-selector
+    required: true
+    scope: llm
+    label:
+      en_US: Model
+      zh_Hans: 模型
+    human_description:
+      en_US: Model for reverse invocation extraction
+      zh_Hans: 用于反向调用抽取的模型
+    llm_description: LLM model config for extraction
+    form: form
+
+output_schema:
+  type: object
+  properties:
+    graph_id:
+      type: string
+    user_id:
+      type: string
+    triples_count:
+      type: integer
+    triples:
+      type: array
+      items:
+        type: object
+        properties:
+          source:
+            type: string
+          relation:
+            type: string
+          target:
+            type: string
+          source_type:
+            type: string
+          target_type:
+            type: string
+          evidence:
+            type: string
+          confidence:
+            type: number
+
+extra:
+  python:
+    source: tools/text_to_knowledge_graph/main.py

@@ -4,18 +4,20 @@ import json
 
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
-from zep_cloud.client import Zep
+from utils.zep_entity_reader import ZepEntityReader
 
 class GraphNodeGetTool(Tool):
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
         try:
             api_key = self.runtime.credentials["zep_api_key"]
             base_url = self.runtime.credentials.get("zep_base_url") or None
-            client = Zep(api_key=api_key, base_url=base_url)
+            graph_id = str(tool_parameters.get("graph_id") or "").strip()
+            if not graph_id:
+                raise ValueError("graph_id 参数不能为空（使用 zep_entity_reader 读取节点详情需要 graph_id）")
 
-            result = client.graph.node.get(tool_parameters["uuid"])
-
-            result_payload = result.model_dump(mode="json", exclude_none=True) if hasattr(result, "model_dump") else result
+            reader = ZepEntityReader(api_key=api_key, api_base_url=base_url)
+            entity = reader.get_entity_with_context(graph_id=graph_id, entity_uuid=tool_parameters["uuid"])
+            result_payload = entity.to_dict() if entity else None
             yield self.create_json_message({"status": "success", "result": result_payload})
             yield self.create_text_message(json.dumps(result_payload, ensure_ascii=False))
         except Exception as e:

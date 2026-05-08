@@ -4,21 +4,15 @@ import json
 
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
-from zep_cloud.client import Zep
+from utils.zep_entity_reader import ZepEntityReader
 
 class GraphEdgeGetByGraphIdTool(Tool):
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
         try:
             api_key = self.runtime.credentials["zep_api_key"]
             base_url = self.runtime.credentials.get("zep_base_url") or None
-            client = Zep(api_key=api_key, base_url=base_url)
-
-            result = client.graph.edge.get_by_graph_id(
-                tool_parameters["graph_id"],
-                limit=tool_parameters.get("limit"),
-                uuid_cursor=tool_parameters.get("uuid_cursor"),
-            )
-
+            reader = ZepEntityReader(api_key=api_key, api_base_url=base_url)
+            result = reader.get_all_edges(tool_parameters["graph_id"])
             result_payload = result.model_dump(mode="json", exclude_none=True) if hasattr(result, "model_dump") else result
             yield self.create_json_message({"status": "success", "result": result_payload})
             yield self.create_text_message(json.dumps(result_payload, ensure_ascii=False))
@@ -26,3 +20,4 @@ class GraphEdgeGetByGraphIdTool(Tool):
             err = str(e)
             yield self.create_json_message({"status": "error", "error": err})
             yield self.create_text_message(err)
+    

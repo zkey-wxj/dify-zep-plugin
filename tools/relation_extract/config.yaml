@@ -1,0 +1,102 @@
+identity:
+  name: relation_extract
+  author: wxj
+  label:
+    en_US: Relation Extract
+    zh_Hans: 关系提取
+
+description:
+  human:
+    en_US: Extract relations from text via reverse-invoked model
+    zh_Hans: 通过反向调用模型从文本抽取关系
+  llm: Extract relations from text via reverse-invoked model
+
+parameters:
+  - name: text
+    type: string
+    required: true
+    label:
+      en_US: Text
+      zh_Hans: 文本
+    human_description:
+      en_US: Input text for relation extraction
+      zh_Hans: 用于关系抽取的输入文本
+    llm_description: Input text for relation extraction
+    form: llm
+  - name: entity_types
+    type: string
+    required: false
+    label:
+      en_US: Entity Types
+      zh_Hans: 实体类型
+    human_description:
+      en_US: Optional entity types, separated by commas/newlines
+      zh_Hans: 可选实体类型，使用逗号或换行分隔
+    llm_description: Optional entity types, separated by commas/newlines
+    form: llm
+  - name: relation_types
+    type: string
+    required: false
+    label:
+      en_US: Relation Types
+      zh_Hans: 关系类型
+    human_description:
+      en_US: Optional relation types, separated by commas/newlines
+      zh_Hans: 可选关系类型，使用逗号或换行分隔
+    llm_description: Optional relation types, separated by commas/newlines
+    form: llm
+  - name: model
+    type: model-selector
+    required: true
+    scope: llm
+    label:
+      en_US: Model
+      zh_Hans: 模型
+    human_description:
+      en_US: Model for reverse invocation extraction
+      zh_Hans: 用于反向调用抽取的模型
+    llm_description: LLM model config for extraction
+    form: form
+
+output_schema:
+  type: object
+  properties:
+    triples_count:
+      type: integer
+    triples:
+      type: array
+      items:
+        type: object
+        properties:
+          source:
+            type: string
+          relation:
+            type: string
+          target:
+            type: string
+          source_type:
+            type: string
+          target_type:
+            type: string
+          evidence:
+            type: string
+          confidence:
+            type: number
+    entity_types:
+      type: array
+      items:
+        type: string
+    relation_types:
+      type: array
+      items:
+        type: string
+    topics:
+      type: array
+      items:
+        type: string
+    tokens_used:
+      type: integer
+
+extra:
+  python:
+    source: tools/relation_extract/main.py
