@@ -7,9 +7,9 @@ identity:
 
 description:
   human:
-    en_US: Delete fact/observation (currently unavailable in installed SDK)
-    zh_Hans: 删除 Fact/Observation（当前已安装 SDK 不支持）
-  llm: Delete fact/observation (currently unavailable in installed SDK)
+    en_US: Delete an observation by UUID (not available in current plugin runtime).
+    zh_Hans: 根据 UUID 删除 Observation（当前插件运行环境暂不可用）。
+  llm: Delete an observation by UUID (not available in current plugin runtime).
 
 parameters:
   - name: uuid

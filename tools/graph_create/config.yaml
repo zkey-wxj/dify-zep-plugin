@@ -7,9 +7,9 @@ identity:
 
 description:
   human:
-    en_US: Create an independent graph via client.graph.create()
-    zh_Hans: 通过 client.graph.create() 创建独立图谱
-  llm: Create an independent graph via client.graph.create()
+    en_US: Create a standalone graph to store shared or domain-specific knowledge.
+    zh_Hans: 创建独立图谱，用于沉淀共享或领域知识。
+  llm: Create a standalone graph to store shared or domain-specific knowledge.
 
 parameters:
   - name: graph_id

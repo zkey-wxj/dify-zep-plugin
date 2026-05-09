@@ -7,9 +7,9 @@ identity:
 
 description:
   human:
-    en_US: Get graph node by UUID via client.graph.node.get(uuid_)
-    zh_Hans: 通过 client.graph.node.get(uuid_) 按 UUID 获取图节点
-  llm: Get graph node by UUID via client.graph.node.get(uuid_)
+    en_US: Get detailed information for a specific graph node by UUID.
+    zh_Hans: 根据 UUID 获取单个图节点的详细信息。
+  llm: Get detailed information for a specific graph node by UUID.
 
 parameters:
   - name: uuid

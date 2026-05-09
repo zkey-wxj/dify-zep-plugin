@@ -7,9 +7,9 @@ identity:
 
 description:
   human:
-    en_US: Get episode by UUID via client.graph.episode.get(uuid_)
-    zh_Hans: 通过 client.graph.episode.get(uuid_) 按 UUID 获取 Episode
-  llm: Get episode by UUID via client.graph.episode.get(uuid_)
+    en_US: Get the source episode record by UUID.
+    zh_Hans: 根据 UUID 获取原始 Episode 记录。
+  llm: Get the source episode record by UUID.
 
 parameters:
   - name: uuid

@@ -7,9 +7,9 @@ identity:
 
 description:
   human:
-    en_US: Get fact/observation via client.graph.observation.get(uuid_)
-    zh_Hans: 通过 client.graph.observation.get(uuid_) 获取 Fact/Observation
-  llm: Get fact/observation via client.graph.observation.get(uuid_)
+    en_US: Get a derived observation record by UUID.
+    zh_Hans: 根据 UUID 获取一条 Observation 记录。
+  llm: Get a derived observation record by UUID.
 
 parameters:
   - name: uuid

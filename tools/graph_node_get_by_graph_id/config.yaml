@@ -7,9 +7,9 @@ identity:
 
 description:
   human:
-    en_US: Get all nodes in graph via client.graph.node.get_by_graph_id(graph_id)
-    zh_Hans: 通过 client.graph.node.get_by_graph_id(graph_id) 获取图谱全部节点
-  llm: Get all nodes in graph via client.graph.node.get_by_graph_id(graph_id)
+    en_US: List nodes from a standalone graph.
+    zh_Hans: 获取独立图谱中的节点列表。
+  llm: List nodes from a standalone graph.
 
 parameters:
   - name: graph_id

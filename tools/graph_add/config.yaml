@@ -7,9 +7,9 @@ identity:
 
 description:
   human:
-    en_US: Add data into graph via client.graph.add()
-    zh_Hans: 通过 client.graph.add() 向图谱添加数据
-  llm: Add data into graph via client.graph.add()
+    en_US: Add text, messages, or JSON data into a graph for later retrieval and context building.
+    zh_Hans: 向图谱写入文本、消息或 JSON 数据，用于后续检索与上下文构建。
+  llm: Add text, messages, or JSON data into a graph for later retrieval and context building.
 
 parameters:
   - name: data

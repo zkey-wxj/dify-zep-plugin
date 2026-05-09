@@ -7,9 +7,9 @@ identity:
 
 description:
   human:
-    en_US: Delete graph via client.graph.delete(graph_id)
-    zh_Hans: 通过 client.graph.delete(graph_id) 删除图谱
-  llm: Delete graph via client.graph.delete(graph_id)
+    en_US: Delete a standalone graph and all knowledge stored in it.
+    zh_Hans: 删除指定独立图谱及其全部知识数据。
+  llm: Delete a standalone graph and all knowledge stored in it.
 
 parameters:
   - name: graph_id

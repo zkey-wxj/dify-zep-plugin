@@ -7,9 +7,9 @@ identity:
 
 description:
   human:
-    en_US: Semantic search in graph via client.graph.search()
-    zh_Hans: 通过 client.graph.search() 在图谱中语义搜索
-  llm: Semantic search in graph via client.graph.search()
+    en_US: Search relevant facts and context from a graph using natural language.
+    zh_Hans: 使用自然语言在图谱中检索相关事实与上下文。
+  llm: Search relevant facts and context from a graph using natural language.
 
 parameters:
   - name: query
@@ -19,9 +19,9 @@ parameters:
       en_US: Query
       zh_Hans: 查询
     human_description:
-      en_US: Search query
-      zh_Hans: 搜索查询
-    llm_description: Search query
+      en_US: What you want to find from the graph.
+      zh_Hans: 你希望在图谱中检索的问题或描述。
+    llm_description: What you want to find from the graph.
     form: llm
   - name: user_id
     type: string
@@ -30,9 +30,9 @@ parameters:
       en_US: User ID
       zh_Hans: 用户 ID
     human_description:
-      en_US: Optional user_id
-      zh_Hans: 可选 user_id
-    llm_description: Optional user_id
+      en_US: User graph scope. Use this when searching user-specific memory.
+      zh_Hans: 用户图谱范围。检索某个用户的记忆时填写。
+    llm_description: User graph scope. Use this when searching user-specific memory.
     form: llm
   - name: graph_id
     type: string
@@ -41,9 +41,9 @@ parameters:
       en_US: Graph ID
       zh_Hans: 图谱 ID
     human_description:
-      en_US: Optional graph_id
-      zh_Hans: 可选 graph_id
-    llm_description: Optional graph_id
+      en_US: Standalone graph scope. Use this when searching shared/domain knowledge.
+      zh_Hans: 独立图谱范围。检索共享/领域知识时填写。
+    llm_description: Standalone graph scope. Use this when searching shared/domain knowledge.
     form: llm
   - name: scope
     type: select
@@ -77,9 +77,9 @@ parameters:
       en_US: Scope
       zh_Hans: 范围
     human_description:
-      en_US: Optional search scope
-      zh_Hans: 可选搜索范围
-    llm_description: Optional search scope
+      en_US: Result focus. Leave empty for automatic/default behavior.
+      zh_Hans: 结果聚焦范围。不填则使用默认/自动行为。
+    llm_description: Result focus. Leave empty for automatic/default behavior.
     form: llm
   - name: limit
     type: number
@@ -88,9 +88,9 @@ parameters:
       en_US: Limit
       zh_Hans: 限制数量
     human_description:
-      en_US: Optional result limit
-      zh_Hans: 可选结果数量限制
-    llm_description: Optional result limit
+      en_US: Max number of returned results.
+      zh_Hans: 返回结果的最大数量。
+    llm_description: Max number of returned results.
     form: llm
 
 extra:
