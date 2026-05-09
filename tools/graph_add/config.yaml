@@ -73,6 +73,17 @@ parameters:
       zh_Hans: 可选 graph_id
     llm_description: Optional graph_id
     form: llm
+  - name: created_at
+    type: string
+    required: false
+    label:
+      en_US: Created At
+      zh_Hans: 创建时间
+    human_description:
+      en_US: Optional RFC3339 timestamp of original event time
+      zh_Hans: 可选 RFC3339 时间戳，表示数据原始发生时间
+    llm_description: Optional RFC3339 timestamp of original event time
+    form: llm
   - name: source_description
     type: string
     required: false

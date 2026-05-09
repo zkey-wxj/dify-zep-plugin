@@ -12,17 +12,6 @@ description:
   llm: Get graph node by UUID via client.graph.node.get(uuid_)
 
 parameters:
-  - name: graph_id
-    type: string
-    required: true
-    label:
-      en_US: Graph ID
-      zh_Hans: 图谱 ID
-    human_description:
-      en_US: Graph ID
-      zh_Hans: 图谱 ID
-    llm_description: Graph ID
-    form: llm
   - name: uuid
     type: string
     required: true

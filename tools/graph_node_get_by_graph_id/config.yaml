@@ -23,7 +23,6 @@ parameters:
       zh_Hans: 图谱 ID
     llm_description: Graph ID
     form: llm
-    
 extra:
   python:
     source: tools/graph_node_get_by_graph_id/main.py

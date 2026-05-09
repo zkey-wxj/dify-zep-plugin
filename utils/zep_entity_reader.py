@@ -227,9 +227,27 @@ class ZepEntityReader:
        
         return self._get_all_nodes_cloud_impl(graph_id)
 
+    def get_nodes_page(
+        self,
+        graph_id: str,
+        limit: Optional[int] = None,
+        uuid_cursor: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """按分页参数获取图谱节点"""
+        return self._get_nodes_page_cloud_impl(graph_id=graph_id, limit=limit, uuid_cursor=uuid_cursor)
+
     def get_all_edges(self, graph_id: str) -> List[Dict[str, Any]]:
       
         return self._get_all_edges_cloud_impl(graph_id)
+
+    def get_edges_page(
+        self,
+        graph_id: str,
+        limit: Optional[int] = None,
+        uuid_cursor: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """按分页参数获取图谱边"""
+        return self._get_edges_page_cloud_impl(graph_id=graph_id, limit=limit, uuid_cursor=uuid_cursor)
 
     def get_node_edges(self, node_uuid: str) -> List[Dict[str, Any]]:
         """获取节点的边"""
@@ -265,6 +283,10 @@ class ZepEntityReader:
         
         return self._get_entities_by_type_cloud_impl(graph_id, entity_type, enrich_with_edges)
 
+    def get_node(self, uuid: str) -> Dict[str, Any]:
+        """按 UUID 获取单个节点"""
+        return self._get_node_cloud_impl(uuid)
+
     def create_graph(
         self,
         graph_id: str,
@@ -280,6 +302,7 @@ class ZepEntityReader:
         data_type: str,
         user_id: Optional[str] = None,
         graph_id: Optional[str] = None,
+        created_at: Optional[str] = None,
         source_description: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
@@ -289,6 +312,7 @@ class ZepEntityReader:
             data_type=data_type,
             user_id=user_id,
             graph_id=graph_id,
+            created_at=created_at,
             source_description=source_description,
             metadata=metadata,
         )
@@ -300,9 +324,29 @@ class ZepEntityReader:
         graph_id: Optional[str] = None,
         scope: Optional[str] = None,
         limit: Optional[int] = None,
+        max_characters: Optional[int] = None,
+        mmr_lambda: Optional[float] = None,
+        reranker: Optional[str] = None,
+        return_raw_results: Optional[bool] = None,
+        center_node_uuid: Optional[str] = None,
+        bfs_origin_node_uuids: Optional[List[str]] = None,
+        search_filters: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """图谱语义检索"""
-        return self._search_graph_cloud_impl(query, user_id, graph_id, scope, limit)
+        return self._search_graph_cloud_impl(
+            query=query,
+            user_id=user_id,
+            graph_id=graph_id,
+            scope=scope,
+            limit=limit,
+            max_characters=max_characters,
+            mmr_lambda=mmr_lambda,
+            reranker=reranker,
+            return_raw_results=return_raw_results,
+            center_node_uuid=center_node_uuid,
+            bfs_origin_node_uuids=bfs_origin_node_uuids,
+            search_filters=search_filters,
+        )
 
     def delete_graph(self, graph_id: str) -> Dict[str, Any]:
         """删除图谱"""
@@ -355,6 +399,32 @@ class ZepEntityReader:
         logger.info(f"共获取 {len(nodes_data)} 个节点")
         return nodes_data
 
+    def _get_nodes_page_cloud_impl(
+        self,
+        graph_id: str,
+        limit: Optional[int],
+        uuid_cursor: Optional[str],
+    ) -> List[Dict[str, Any]]:
+        logger.info(f"按页获取图谱 {graph_id} 节点: limit={limit}, uuid_cursor={uuid_cursor}")
+        result = self._call_with_retry(
+            func=lambda: self.client.graph.node.get_by_graph_id(
+                graph_id=graph_id,
+                limit=limit,
+                uuid_cursor=uuid_cursor,
+            ),
+            operation_name=f"获取节点分页(graph={graph_id})",
+        )
+        items: List[Dict[str, Any]] = []
+        for node in result:
+            items.append({
+                "uuid": getattr(node, "uuid_", None) or getattr(node, "uuid", ""),
+                "name": node.name or "",
+                "labels": node.labels or [],
+                "summary": node.summary or "",
+                "attributes": node.attributes or {},
+            })
+        return items
+
     def _model_to_dict(self, value: Any) -> Dict[str, Any]:
         if hasattr(value, "model_dump"):
             return value.model_dump(mode="json", exclude_none=True)
@@ -395,6 +465,40 @@ class ZepEntityReader:
         
         logger.info(f"共获取 {len(edges_data)} 条边")
         return edges_data
+
+    def _get_edges_page_cloud_impl(
+        self,
+        graph_id: str,
+        limit: Optional[int],
+        uuid_cursor: Optional[str],
+    ) -> List[Dict[str, Any]]:
+        logger.info(f"按页获取图谱 {graph_id} 边: limit={limit}, uuid_cursor={uuid_cursor}")
+        result = self._call_with_retry(
+            func=lambda: self.client.graph.edge.get_by_graph_id(
+                graph_id=graph_id,
+                limit=limit,
+                uuid_cursor=uuid_cursor,
+            ),
+            operation_name=f"获取边分页(graph={graph_id})",
+        )
+        items: List[Dict[str, Any]] = []
+        for edge in result:
+            items.append({
+                "uuid": getattr(edge, "uuid_", None) or getattr(edge, "uuid", ""),
+                "name": edge.name or "",
+                "fact": edge.fact or "",
+                "source_node_uuid": edge.source_node_uuid,
+                "target_node_uuid": edge.target_node_uuid,
+                "attributes": edge.attributes or {},
+            })
+        return items
+
+    def _get_node_cloud_impl(self, uuid: str) -> Dict[str, Any]:
+        result = self._call_with_retry(
+            func=lambda: self.client.graph.node.get(uuid_=uuid),
+            operation_name=f"获取节点详情(uuid={uuid[:8]}...)",
+        )
+        return self._model_to_dict(result)
     
     def _get_node_edges_cloud_impl(self, node_uuid: str) -> List[Dict[str, Any]]:
         """
@@ -673,6 +777,7 @@ class ZepEntityReader:
         data_type: str,
         user_id: Optional[str],
         graph_id: Optional[str],
+        created_at: Optional[str],
         source_description: Optional[str],
         metadata: Optional[Dict[str, Any]],
     ) -> Dict[str, Any]:
@@ -682,6 +787,7 @@ class ZepEntityReader:
                 type=data_type,
                 user_id=user_id,
                 graph_id=graph_id,
+                created_at=created_at,
                 source_description=source_description,
                 metadata=metadata,
             ),
@@ -696,6 +802,13 @@ class ZepEntityReader:
         graph_id: Optional[str],
         scope: Optional[str],
         limit: Optional[int],
+        max_characters: Optional[int],
+        mmr_lambda: Optional[float],
+        reranker: Optional[str],
+        return_raw_results: Optional[bool],
+        center_node_uuid: Optional[str],
+        bfs_origin_node_uuids: Optional[List[str]],
+        search_filters: Optional[Dict[str, Any]],
     ) -> Dict[str, Any]:
         result = self._call_with_retry(
             func=lambda: self.client.graph.search(
@@ -704,6 +817,13 @@ class ZepEntityReader:
                 graph_id=graph_id,
                 scope=scope,
                 limit=limit,
+                max_characters=max_characters,
+                mmr_lambda=mmr_lambda,
+                reranker=reranker,
+                return_raw_results=return_raw_results,
+                center_node_uuid=center_node_uuid,
+                bfs_origin_node_uuids=bfs_origin_node_uuids,
+                search_filters=search_filters,
             ),
             operation_name=f"图谱检索(graph={graph_id or '-'}, query={query[:20]}...)",
         )

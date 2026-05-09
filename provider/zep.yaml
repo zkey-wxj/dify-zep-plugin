@@ -54,11 +54,6 @@ credentials_for_provider:
 
 tools:
   - tools/graph_add/config.yaml
-  - tools/text_to_knowledge_graph/config.yaml
-  - tools/entity_extract/config.yaml
-  - tools/relation_extract/config.yaml
-  - tools/entity_type_extract/config.yaml
-  - tools/relation_type_extract/config.yaml
   - tools/graph_create/config.yaml
   - tools/graph_search/config.yaml
   - tools/graph_node_get/config.yaml
