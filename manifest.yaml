@@ -12,7 +12,10 @@ resource:
   permission:
     tool:
       enabled: true
-    llm:
+    model:
+      enabled: true
+      llm: true
+    endpoint:
       enabled: true
 plugins:
   tools:
