@@ -1,4 +1,4 @@
-version: 0.0.3
+version: 0.0.4
 type: plugin
 author: wxj
 name: zep
@@ -12,11 +12,13 @@ resource:
   permission:
     tool:
       enabled: true
+    llm:
+      enabled: true
 plugins:
   tools:
     - provider/zep.yaml
 meta:
-  version: 0.0.3
+  version: 0.0.4
   arch:
     - amd64
     - arm64

@@ -42,7 +42,24 @@ output_schema:
     relation_types:
       type: array
       items:
-        type: string
+        type: object
+        properties:
+          id:
+            type: string
+          code:
+            type: string
+          label:
+            type: string
+          name:
+            type: string
+          description:
+            type: string
+          properties:
+            type: array
+            items:
+              type: object
+          source:
+            type: string
     count:
       type: integer
 

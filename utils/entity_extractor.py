@@ -14,6 +14,8 @@ import time
 from typing import Dict, Any, List, Optional, Tuple, Callable
 from dataclasses import dataclass, field
 
+from dify_plugin.entities.model.message import SystemPromptMessage, UserPromptMessage
+
 try:
     from utils.logger import get_logger
 except Exception:
@@ -678,6 +680,237 @@ def infer_relation_dynamic(
         return "RELATED_TO"
 
 
+class EntityExtractionToolCore:
+    """供 Dify tools 复用的实体抽取核心逻辑。"""
+
+    @staticmethod
+    def build_llm_invoke(session, model_config: dict[str, Any]) -> Callable[[List[Dict[str, str]], float, int], str]:
+        if not isinstance(model_config, dict):
+            raise ValueError("model 参数缺失或格式不正确，请在工具配置中选择模型")
+
+        def _invoke(messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
+            prompt_messages = []
+            for message in messages:
+                role = message.get("role", "user")
+                content = message.get("content", "")
+                if role == "system":
+                    prompt_messages.append(SystemPromptMessage(content=content))
+                else:
+                    prompt_messages.append(UserPromptMessage(content=content))
+
+            result = session.model.llm.invoke(
+                model_config=model_config,
+                prompt_messages=prompt_messages,
+                stream=False,
+            )
+            content = result.message.content
+            return content if isinstance(content, str) else ""
+
+        return _invoke
+
+    @staticmethod
+    def discover_entity_type_names(text: str, llm_invoke) -> List[str]:
+        prompt = f"""
+从以下文本中识别可能的实体类型（例如人物、组织、地点、概念、事件、方法、物品、时间）。
+请每行返回一个类型名称，不要返回其他内容。
+
+文本：
+{text[:4000]}
+""".strip()
+
+        output = llm_invoke(
+            [
+                {"role": "system", "content": "你是知识图谱实体类型识别助手。"},
+                {"role": "user", "content": prompt},
+            ],
+            0.3,
+            400,
+        )
+
+        lines = [line.strip("- •*\t ") for line in output.splitlines()]
+        candidates = [line for line in lines if line and len(line) <= 60]
+        return EntityExtractionToolCore.deduplicate_keep_order(candidates)
+
+    @staticmethod
+    def parse_type_definitions(raw_value: Any, preferred_keys: tuple[str, ...]) -> List[Dict[str, Any]]:
+        if raw_value is None:
+            return []
+
+        parsed_value: Any = raw_value
+        if isinstance(raw_value, str):
+            text = raw_value.strip()
+            if not text:
+                return []
+            try:
+                parsed_value = json.loads(text)
+            except Exception:
+                parts = re.split(r"[,，\n]+", text)
+                return EntityExtractionToolCore.build_type_defs_from_names(parts)
+
+        if isinstance(parsed_value, dict):
+            parsed_value = EntityExtractionToolCore.pick_types_from_mapping(parsed_value, preferred_keys)
+
+        if isinstance(parsed_value, list):
+            return EntityExtractionToolCore.normalize_type_definitions(parsed_value)
+
+        text = str(parsed_value).strip()
+        if not text:
+            return []
+        parts = re.split(r"[,，\n]+", text)
+        return EntityExtractionToolCore.build_type_defs_from_names(parts)
+
+    @staticmethod
+    def pick_types_from_mapping(payload: dict[str, Any], preferred_keys: tuple[str, ...]) -> Any:
+        candidates: List[Any] = [payload]
+        result_value = payload.get("result")
+        if isinstance(result_value, dict):
+            candidates.append(result_value)
+
+        for candidate in candidates:
+            for key in preferred_keys:
+                value = candidate.get(key)
+                if isinstance(value, list):
+                    return value
+        return payload
+
+    @staticmethod
+    def normalize_type_definitions(values: List[Any]) -> List[Dict[str, Any]]:
+        normalized: List[Dict[str, Any]] = []
+        for item in values:
+            normalized_item = EntityExtractionToolCore.normalize_type_definition(item)
+            if normalized_item:
+                normalized.append(normalized_item)
+        return EntityExtractionToolCore.deduplicate_type_definitions_keep_order(normalized)
+
+    @staticmethod
+    def normalize_type_definition(item: Any) -> Optional[Dict[str, Any]]:
+        if isinstance(item, dict):
+            normalized = dict(item)
+            raw_name = normalized.get("name") or normalized.get("label") or normalized.get("id") or normalized.get("code")
+            if not isinstance(raw_name, str) or not raw_name.strip():
+                return None
+            name = raw_name.strip()
+            normalized["name"] = name
+            description = normalized.get("description")
+            if not isinstance(description, str) or not description.strip():
+                normalized["description"] = name
+            return normalized
+
+        name = str(item).strip()
+        if not name:
+            return None
+        return {"name": name, "description": name}
+
+    @staticmethod
+    def build_type_defs_from_names(names: List[Any]) -> List[Dict[str, Any]]:
+        raw_defs: List[Dict[str, Any]] = []
+        for item in names:
+            name = str(item).strip()
+            if name:
+                raw_defs.append({"name": name, "description": name})
+        return EntityExtractionToolCore.deduplicate_type_definitions_keep_order(raw_defs)
+
+    @staticmethod
+    def build_relation_type_defs_from_discovered(discovered_relations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        raw_defs: List[Dict[str, Any]] = []
+        for item in discovered_relations:
+            if not isinstance(item, dict):
+                continue
+            label = str(item.get("label") or "").strip()
+            code = str(item.get("code") or "").strip()
+            name = label or code
+            if not name:
+                continue
+            raw_def = dict(item)
+            raw_def["name"] = name
+            if not isinstance(raw_def.get("description"), str) or not raw_def.get("description", "").strip():
+                raw_def["description"] = name
+            raw_defs.append(raw_def)
+        return EntityExtractionToolCore.deduplicate_type_definitions_keep_order(raw_defs)
+
+    @staticmethod
+    def extract_type_names(type_definitions: List[Dict[str, Any]]) -> List[str]:
+        names: List[str] = []
+        for item in type_definitions:
+            name = item.get("name")
+            if isinstance(name, str) and name.strip():
+                names.append(name.strip())
+        return EntityExtractionToolCore.deduplicate_keep_order(names)
+
+    @staticmethod
+    def build_ontology(entity_types: List[Dict[str, Any]], relation_types: List[Dict[str, Any]]) -> Dict[str, Any]:
+        return {
+            "entity_types": entity_types,
+            "edge_types": relation_types,
+        }
+
+    @staticmethod
+    def build_triples_from_extraction(extraction) -> List[Dict[str, Any]]:
+        entity_type_map: Dict[str, str] = {}
+        for entity in extraction.entities:
+            key = entity.name.strip().casefold()
+            if key and key not in entity_type_map:
+                entity_type_map[key] = entity.entity_type
+
+        triples: List[Dict[str, Any]] = []
+        seen: set[str] = set()
+        for relation in extraction.relations:
+            source = relation.source.strip()
+            target = relation.target.strip()
+            rel_type = relation.relation_type.strip() or "RELATED_TO"
+            if not source or not target:
+                continue
+
+            key = f"{source.casefold()}|{rel_type.casefold()}|{target.casefold()}"
+            if key in seen:
+                continue
+            seen.add(key)
+
+            triples.append(
+                {
+                    "source": source,
+                    "relation": rel_type,
+                    "target": target,
+                    "source_type": entity_type_map.get(source.casefold(), "Entity"),
+                    "target_type": entity_type_map.get(target.casefold(), "Entity"),
+                    "evidence": relation.description or "",
+                    "confidence": round(max(0.0, min(1.0, relation.strength / 10.0)), 3),
+                }
+            )
+
+        return triples
+
+    @staticmethod
+    def deduplicate_type_definitions_keep_order(values: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        seen: set[str] = set()
+        result: List[Dict[str, Any]] = []
+        for value in values:
+            name = value.get("name")
+            if not isinstance(name, str) or not name.strip():
+                continue
+            key = str(value.get("id") or value.get("code") or name).strip().casefold()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            result.append(value)
+        return result
+
+    @staticmethod
+    def deduplicate_keep_order(values: List[str]) -> List[str]:
+        seen: set[str] = set()
+        result: List[str] = []
+        for value in values:
+            normalized = str(value).strip()
+            if not normalized:
+                continue
+            key = normalized.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            result.append(normalized)
+        return result
+
+
 def normalize_relation_type(raw_type: str) -> str:
     """
     标准化关系类型
@@ -790,6 +1023,7 @@ GRAPH_EXTRACTION_PROMPT = """---Goal---
   * 参与类：参与、组织、主持
   * 学术类：研究、领域、专长
 - relationship_strength: 表示源实体和目标实体之间关系强度的数字评分 (1-10)
+- relationship_keywords: 请优先使用下方关系类型定义中的语义与命名；若文本存在更精确关系，可在其基础上扩展。
 
 格式：("relationship"{tuple_delimiter}<source_entity>{tuple_delimiter}<target_entity>{tuple_delimiter}<relationship_description>{tuple_delimiter}<relationship_keywords>{tuple_delimiter}<relationship_strength>)
 
@@ -809,6 +1043,10 @@ GRAPH_EXTRACTION_PROMPT = """---Goal---
 ---Real Data---
 ######################
 Entity_types: [{entity_types}]
+Entity_type_definitions:
+{entity_type_descriptions}
+Relation_type_definitions:
+{relation_type_descriptions}
 Text: {input_text}
 ######################
 Output:"""
@@ -864,6 +1102,12 @@ CONTINUE_PROMPT = """
 - relationship_strength: 关系强度评分 (1-10)
 
 格式：("relationship"{tuple_delimiter}<source_entity>{tuple_delimiter}<target_entity>{tuple_delimiter}<relationship_description>{tuple_delimiter}<relationship_keywords>{tuple_delimiter}<relationship_strength>)
+
+---Entity Type Definitions---
+{entity_type_descriptions}
+
+---Relation Type Definitions---
+{relation_type_descriptions}
 
 ---Output---
 
@@ -1051,9 +1295,9 @@ class EntityExtractor:
             if ontology:
                 for et_def in ontology.get("entity_types", []):
                     if et_def.get("name") == et:
-                        desc = et_def.get("description", "")
-                        if desc:
-                            descriptions.append(f"- {et}: {desc}")
+                        details = self._format_entity_type_definition(et_def)
+                        if details:
+                            descriptions.append(details)
                             break
                 else:
                     # 本体中没有，使用基础描述
@@ -1069,6 +1313,77 @@ class EntityExtractor:
                     descriptions.append(f"- {et}: 实体类型")
 
         return "\n".join(descriptions)
+
+    def _build_relation_type_descriptions(self, ontology: Dict[str, Any] = None) -> str:
+        if not ontology:
+            return "- RELATED_TO: 默认关系类型，表示存在关联但无法细分"
+
+        edge_types = ontology.get("edge_types")
+        if not isinstance(edge_types, list) or not edge_types:
+            return "- RELATED_TO: 默认关系类型，表示存在关联但无法细分"
+
+        descriptions: List[str] = []
+        for edge_type in edge_types:
+            if isinstance(edge_type, dict):
+                details = self._format_entity_type_definition(edge_type)
+                if details:
+                    descriptions.append(details)
+            else:
+                name = str(edge_type).strip()
+                if name:
+                    descriptions.append(f"- {name}: 关系类型")
+
+        if not descriptions:
+            return "- RELATED_TO: 默认关系类型，表示存在关联但无法细分"
+        return "\n".join(descriptions)
+
+    @staticmethod
+    def _format_entity_type_definition(type_def: Dict[str, Any]) -> str:
+        name = str(type_def.get("name") or "").strip()
+        if not name:
+            return ""
+
+        description = str(type_def.get("description") or "").strip()
+        if not description:
+            description = "实体类型"
+
+        fields = [f"- {name}: {description}"]
+
+        type_id = str(type_def.get("id") or "").strip()
+        if type_id:
+            fields.append(f"id={type_id}")
+
+        code = str(type_def.get("code") or "").strip()
+        if code:
+            fields.append(f"code={code}")
+
+        label = str(type_def.get("label") or "").strip()
+        if label:
+            fields.append(f"label={label}")
+
+        properties = type_def.get("properties")
+        if isinstance(properties, list) and properties:
+            formatted_properties = []
+            for prop in properties:
+                if isinstance(prop, dict):
+                    prop_name = str(prop.get("name") or "").strip()
+                    prop_type = str(prop.get("type") or "").strip()
+                    prop_desc = str(prop.get("description") or "").strip()
+                    if prop_name:
+                        property_item = f"{prop_name}"
+                        if prop_type:
+                            property_item += f"({prop_type})"
+                        if prop_desc:
+                            property_item += f": {prop_desc}"
+                        formatted_properties.append(property_item)
+                else:
+                    prop_text = str(prop).strip()
+                    if prop_text:
+                        formatted_properties.append(prop_text)
+            if formatted_properties:
+                fields.append("properties=[" + "; ".join(formatted_properties) + "]")
+
+        return " | ".join(fields)
 
     def _extract_with_gleaning(
         self,
@@ -1088,6 +1403,7 @@ class EntityExtractor:
         variables = {**self.prompt_variables, "entity_types": ",".join(entity_types)}
         variables["input_text"] = text
         variables["entity_type_descriptions"] = self._build_entity_type_descriptions(ontology, entity_types)
+        variables["relation_type_descriptions"] = self._build_relation_type_descriptions(ontology)
         variables["examples"] = "\n\n".join(ENTITY_EXTRACTION_EXAMPLES["default"])
 
         # 构建初始提示词
@@ -1110,7 +1426,9 @@ class EntityExtractor:
             continue_prompt = self._replace_variables(CONTINUE_PROMPT, {
                 "tuple_delimiter": DEFAULT_TUPLE_DELIMITER,
                 "record_delimiter": DEFAULT_RECORD_DELIMITER,
-                "entity_types": ",".join(entity_types)
+                "entity_types": ",".join(entity_types),
+                "entity_type_descriptions": self._build_entity_type_descriptions(ontology, entity_types),
+                "relation_type_descriptions": self._build_relation_type_descriptions(ontology),
             })
             history.append({"role": "user", "content": continue_prompt})
             response = self._call_llm("", messages=history, temperature=0.3)
@@ -1175,6 +1493,7 @@ class EntityExtractor:
         variables = {**self.prompt_variables, "entity_types": ",".join(entity_types)}
         variables["input_text"] = text
         variables["entity_type_descriptions"] = self._build_entity_type_descriptions(ontology, entity_types)
+        variables["relation_type_descriptions"] = self._build_relation_type_descriptions(ontology)
         variables["examples"] = "\n\n".join(ENTITY_EXTRACTION_EXAMPLES["default"]) + context
 
         prompt = self._replace_variables(GRAPH_EXTRACTION_PROMPT, variables)
@@ -1219,6 +1538,7 @@ class EntityExtractor:
             variables = {**self.prompt_variables, "entity_types": ",".join(entity_types)}
             variables["input_text"] = chunk_text
             variables["entity_type_descriptions"] = self._build_entity_type_descriptions(ontology, entity_types)
+            variables["relation_type_descriptions"] = self._build_relation_type_descriptions(ontology)
             variables["examples"] = "\n\n".join(ENTITY_EXTRACTION_EXAMPLES["default"])
 
             prompt = self._replace_variables(GRAPH_EXTRACTION_PROMPT, variables)
