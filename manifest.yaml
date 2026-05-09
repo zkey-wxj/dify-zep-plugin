@@ -1,4 +1,4 @@
-version: 0.0.4
+version: 0.0.5
 type: plugin
 author: wxj
 name: zep
@@ -21,7 +21,7 @@ plugins:
   tools:
     - provider/zep.yaml
 meta:
-  version: 0.0.4
+  version: 0.0.5
   arch:
     - amd64
     - arm64

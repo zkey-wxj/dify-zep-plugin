@@ -11,7 +11,7 @@ LLM 实体抽取服务 - 基于 GraphRAG 方案
 import json
 import re
 import time
-from typing import Dict, Any, List, Optional, Tuple, Callable
+from typing import Dict, Any, List, Optional, Tuple, Callable, Iterator
 from dataclasses import dataclass, field
 
 from dify_plugin.entities.model.message import SystemPromptMessage, UserPromptMessage
@@ -21,7 +21,7 @@ try:
 except Exception:
     from logger import get_logger
 
-logger = get_logger('entity_extractor')
+logger = get_logger("entity_extractor")
 
 LlmInvokeFn = Callable[[List[Dict[str, str]], float, int], str]
 
@@ -84,9 +84,9 @@ def _convert_neo4j_record(value: Any) -> Any:
         # Neo4j Map 对象或其他类型，转换为字符串或尝试遍历
         try:
             # 尝试像 dict 一样遍历（处理 Neo4j Map 类型）
-            if hasattr(value, 'items'):
+            if hasattr(value, "items"):
                 return {k: _convert_neo4j_record(v) for k, v in value.items()}
-            elif hasattr(value, '__iter__') and not isinstance(value, (str, bytes)):
+            elif hasattr(value, "__iter__") and not isinstance(value, (str, bytes)):
                 return [_convert_neo4j_record(item) for item in value]
             else:
                 return str(value)
@@ -109,14 +109,12 @@ RELATION_TYPE_NORMALIZATION = {
     "在": "LOCATED_AT",
     "源于": "ORIGINATED_FROM",
     "来自": "FROM",
-
     # 身份/角色关系
     "是": "IS",
     "担任": "HOLDS_POSITION",
     "任职于": "EMPLOYED_BY",
     "工作于": "EMPLOYED_BY",
     "曾是": "WAS",
-
     # 社交/互动关系
     "合作": "COLLABORATES_WITH",
     "共同": "COLLABORATES_WITH",
@@ -126,7 +124,6 @@ RELATION_TYPE_NORMALIZATION = {
     "老师": "TEACHER_OF",
     "认识": "KNOWS",
     "朋友": "FRIEND_OF",
-
     # 创作/生产关系
     "创作": "CREATED",
     "发表": "PUBLISHED",
@@ -135,7 +132,6 @@ RELATION_TYPE_NORMALIZATION = {
     "编写": "WROTE",
     "著": "AUTHORED",
     "主演": "STARRED_IN",
-
     # 内容/组成关系
     "包含": "CONTAINS",
     "包括": "INCLUDES",
@@ -143,7 +139,6 @@ RELATION_TYPE_NORMALIZATION = {
     "阐述": "DESCRIBES",
     "解释": "EXPLAINS",
     "讨论": "DISCUSSES",
-
     # 因果/影响关系
     "导致": "CAUSES",
     "影响": "INFLUENCES",
@@ -151,26 +146,22 @@ RELATION_TYPE_NORMALIZATION = {
     "依赖": "DEPENDS_ON",
     "促进": "PROMOTES",
     "阻碍": "HINDERS",
-
     # 时间/顺序关系
     "早于": "BEFORE",
     "晚于": "AFTER",
     "发生于": "OCCURRED_AT",
     "持续至": "LASTED_UNTIL",
-
     # 学术/研究关系
     "研究": "RESEARCHES",
     "领域": "FIELD_OF",
     "专长": "EXPERT_IN",
     "引用": "CITES",
     "参考": "REFERENCES",
-
     # 事件参与
     "参与": "PARTICIPATED_IN",
     "组织": "ORGANIZED",
     "主持": "HOSTED",
     "出席": "ATTENDED",
-
     # 通用关系（fallback）
     "相关": "RELATED_TO",
     "关联": "ASSOCIATED_WITH",
@@ -200,14 +191,12 @@ RELATION_TYPE_LABELS = {
     "BELONGS_TO": "属于",
     "LOCATED_AT": "位于",
     "FROM": "来自",
-
     # 身份/角色类
     "IS": "是",
     "WAS": "曾是",
     "BECAME": "成为",
     "EMPLOYED_BY": "任职于",
     "HOLDS_POSITION": "担任",
-
     # 创作/生产类
     "CREATED": "创作",
     "AUTHORED": "著",
@@ -216,7 +205,6 @@ RELATION_TYPE_LABELS = {
     "PUBLISHED": "发表",
     "STARRED_IN": "主演",
     "WROTE": "编写",
-
     # 组成/包含类
     "CONTAINS": "包含",
     "INCLUDES": "包括",
@@ -225,7 +213,6 @@ RELATION_TYPE_LABELS = {
     "DESCRIBES": "阐述",
     "EXPLAINS": "解释",
     "DISCUSSES": "讨论",
-
     # 社交/互动类
     "COLLABORATES_WITH": "合作",
     "MENTORS": "指导",
@@ -234,7 +221,6 @@ RELATION_TYPE_LABELS = {
     "TEACHER_OF": "教导",
     "KNOWS": "认识",
     "FRIEND_OF": "朋友",
-
     # 因果/影响类
     "CAUSES": "导致",
     "CAUSED_BY": "由...导致",
@@ -245,25 +231,21 @@ RELATION_TYPE_LABELS = {
     "DEPENDS_ON": "依赖",
     "PROMOTES": "促进",
     "HINDERS": "阻碍",
-
     # 学术/研究类
     "RESEARCHES": "研究",
     "FIELD_OF": "领域",
     "EXPERT_IN": "专长",
     "CITES": "引用",
     "REFERENCES": "参考",
-
     # 参与类
     "PARTICIPATED_IN": "参与",
     "ORGANIZED": "组织",
     "HOSTED": "主持",
     "ATTENDED": "出席",
-
     # 时间类
     "BEFORE": "早于",
     "AFTER": "晚于",
     "OCCURRED_AT": "发生于",
-
     # 通用关系
     "RELATED_TO": "相关",
     "ASSOCIATED_WITH": "关联",
@@ -293,9 +275,7 @@ def get_relation_label(relation_code: str, lang: str = "zh") -> str:
 
 
 def discover_relation_types_from_documents(
-    documents: List[str],
-    llm_invoke: Optional[LlmInvokeFn] = None,
-    max_types: int = 30
+    documents: List[str], llm_invoke: Optional[LlmInvokeFn] = None, max_types: int = 30
 ) -> List[Dict[str, str]]:
     """
     从文档中自动发现关系类型
@@ -348,12 +328,9 @@ def discover_relation_types_from_documents(
             [
                 {
                     "role": "system",
-                    "content": "你是一个专业的知识图谱分析师，擅长从文本中发现实体关系模式。"
+                    "content": "你是一个专业的知识图谱分析师，擅长从文本中发现实体关系模式。",
                 },
-                {
-                    "role": "user",
-                    "content": discovery_prompt
-                }
+                {"role": "user", "content": discovery_prompt},
             ],
             0.3,
             800,
@@ -363,29 +340,29 @@ def discover_relation_types_from_documents(
         discovered_types = []
         seen_codes = set()
 
-        for line in response_text.strip().split('\n'):
+        for line in response_text.strip().split("\n"):
             line = line.strip()
-            if '|' in line:
-                parts = line.split('|')
+            if "|" in line:
+                parts = line.split("|")
                 if len(parts) == 2:
-                    label = parts[0].strip('- •*').strip()
-                    code = parts[1].strip().upper().replace(' ', '_')
+                    label = parts[0].strip("- •*").strip()
+                    code = parts[1].strip().upper().replace(" ", "_")
 
                     if label and code and code not in seen_codes:
-                        discovered_types.append({
-                            "code": code,
-                            "label": label,
-                            "source": "discovered"
-                        })
+                        discovered_types.append(
+                            {"code": code, "label": label, "source": "discovered"}
+                        )
                         seen_codes.add(code)
 
             # 兼容无分隔符的格式（纯中文）
             elif line and len(line) > 1 and len(line) < 20:
-                label = line.strip('- •*').strip()
+                label = line.strip("- •*").strip()
                 if label and label in RELATION_TYPE_NORMALIZATION:
                     code = RELATION_TYPE_NORMALIZATION[label]
                     if code not in seen_codes:
-                        discovered_types.append({"code": code, "label": label, "source": "mapped"})
+                        discovered_types.append(
+                            {"code": code, "label": label, "source": "mapped"}
+                        )
                         seen_codes.add(code)
 
         logger.info(f"从文档中发现 {len(discovered_types)} 种关系类型")
@@ -400,6 +377,7 @@ def discover_relation_types_from_documents(
             {"code": "IS", "label": "是", "source": "default"},
             {"code": "BASED_ON", "label": "基于", "source": "default"},
         ]
+
 
 def infer_relation_from_fact(
     fact: str,
@@ -430,14 +408,12 @@ def infer_relation_from_fact(
         "BELONGS_TO": "属于、隶属于",
         "LOCATED_AT": "位于、坐落在",
         "FROM": "来自",
-
         # 身份/角色类
         "IS": "是、即是",
         "WAS": "曾是、曾经是",
         "BECAME": "成为、变成了",
         "EMPLOYED_BY": "任职于、工作于",
         "HOLDS_POSITION": "担任",
-
         # 创作/生产类
         "CREATED": "创作、创造",
         "AUTHORED": "编写、著、撰写",
@@ -445,7 +421,6 @@ def infer_relation_from_fact(
         "PROPOSED": "提出、首创",
         "PUBLISHED": "发表、发布",
         "STARRED_IN": "主演",
-
         # 组成/包含类
         "CONTAINS": "包含、包括",
         "INCLUDES": "包括、含有",
@@ -454,7 +429,6 @@ def infer_relation_from_fact(
         "DESCRIBES": "阐述、描述",
         "EXPLAINS": "解释、说明",
         "DISCUSSES": "讨论、探讨、论述",
-
         # 社交/互动类
         "COLLABORATES_WITH": "合作",
         "MENTORS": "指导、辅导",
@@ -463,7 +437,6 @@ def infer_relation_from_fact(
         "TEACHER_OF": "教学、教导",
         "KNOWS": "认识、相识",
         "FRIEND_OF": "朋友",
-
         # 因果/影响类
         "CAUSES": "导致、致使、造成",
         "CAUSED_BY": "由...导致",
@@ -474,34 +447,30 @@ def infer_relation_from_fact(
         "DEPENDS_ON": "依赖、依赖于",
         "PROMOTES": "促进、推动",
         "HINDERS": "阻碍、妨碍",
-
         # 学术/研究类
         "RESEARCHES": "研究",
         "FIELD_OF": "领域",
         "EXPERT_IN": "专长、擅长",
         "CITES": "引用",
         "REFERENCES": "参考",
-
         # 参与类
         "PARTICIPATED_IN": "参与、加入",
         "ORGANIZED": "组织、策划",
         "HOSTED": "主持",
         "ATTENDED": "出席、参加",
-
         # 时间类
         "BEFORE": "早于、先于",
         "AFTER": "晚于、后于",
         "OCCURRED_AT": "发生于、发生在",
-
         # 通用关系（fallback）
         "RELATED_TO": "相关、关联",
         "ASSOCIATED_WITH": "有关、有关联",
     }
 
     # 构建 LLM 提示词
-    valid_types_list = "\n".join([
-        f"  - {t}: {d}" for t, d in VALID_RELATION_TYPES.items()
-    ])
+    valid_types_list = "\n".join(
+        [f"  - {t}: {d}" for t, d in VALID_RELATION_TYPES.items()]
+    )
 
     prompt = f"""分析以下关系描述，返回最精确的关系类型。
 
@@ -529,12 +498,9 @@ def infer_relation_from_fact(
             [
                 {
                     "role": "system",
-                    "content": "你是一个专业的知识图谱构建助手，擅长分析实体之间的语义关系。"
+                    "content": "你是一个专业的知识图谱构建助手，擅长分析实体之间的语义关系。",
                 },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
+                {"role": "user", "content": prompt},
             ],
             0.1,
             50,
@@ -543,7 +509,7 @@ def infer_relation_from_fact(
         result = response_text.strip().upper()
 
         # 清理可能的前缀/后缀
-        result = result.strip().strip('"\'.`')
+        result = result.strip().strip("\"'.`")
 
         # 验证返回的关系类型是否有效
         if result in VALID_RELATION_TYPES:
@@ -607,9 +573,7 @@ def infer_relation_dynamic(
     ]
 
     # 构建 LLM 提示词
-    valid_types_list = "\n".join([
-        f"  - {t['code']}: {t['label']}" for t in all_types
-    ])
+    valid_types_list = "\n".join([f"  - {t['code']}: {t['label']}" for t in all_types])
 
     prompt = f"""分析以下关系描述，返回最精确的关系类型代码。
 
@@ -638,24 +602,23 @@ def infer_relation_dynamic(
             [
                 {
                     "role": "system",
-                    "content": "你是一个专业的知识图谱构建助手，擅长根据项目上下文分析实体关系。"
+                    "content": "你是一个专业的知识图谱构建助手，擅长根据项目上下文分析实体关系。",
                 },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
+                {"role": "user", "content": prompt},
             ],
             0.1,
             50,
         )
 
-        result = response_text.strip().strip().strip('"\'.`')
+        result = response_text.strip().strip().strip("\"'.`")
         result = result.upper()
 
         # 验证是否为有效的类型
         valid_codes = {t["code"] for t in all_types}
         if result in valid_codes:
-            logger.debug(f"动态推断关系: '{fact[:30]}...' -> {result} (project: {project_id})")
+            logger.debug(
+                f"动态推断关系: '{fact[:30]}...' -> {result} (project: {project_id})"
+            )
             return result
         else:
             # 处理新创建的类型（以 _RELATION 结尾）
@@ -665,11 +628,17 @@ def infer_relation_dynamic(
                 if project_id:
                     # 将新类型添加到项目配置
                     current_types = get_project_relation_types(project_id)
-                    new_type_entry = {"code": result, "label": new_label, "source": "discovered"}
+                    new_type_entry = {
+                        "code": result,
+                        "label": new_label,
+                        "source": "discovered",
+                    }
                     if result not in {ct["code"] for ct in current_types}:
                         current_types.append(new_type_entry)
                         save_project_relation_types(project_id, current_types)
-                        logger.info(f"项目 {project_id} 新增关系类型: {result} ({new_label})")
+                        logger.info(
+                            f"项目 {project_id} 新增关系类型: {result} ({new_label})"
+                        )
                 return result
             else:
                 logger.warning(f"LLM返回无效关系类型: {result}，使用 RELATED_TO")
@@ -684,11 +653,18 @@ class EntityExtractionToolCore:
     """供 Dify tools 复用的实体抽取核心逻辑。"""
 
     @staticmethod
-    def build_llm_invoke(session, model_config: dict[str, Any]) -> Callable[[List[Dict[str, str]], float, int], str]:
+    def build_llm_invoke(
+        session, model_config: dict[str, Any]
+    ) -> Callable[[List[Dict[str, str]], float, int], str]:
         if not isinstance(model_config, dict):
             raise ValueError("model 参数缺失或格式不正确，请在工具配置中选择模型")
 
-        def _invoke(messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
+        def _invoke(
+            messages: List[Dict[str, str]],
+            temperature: float,
+            max_tokens: int,
+            stream: bool = False,
+        ) -> str:
             prompt_messages = []
             for message in messages:
                 role = message.get("role", "user")
@@ -701,7 +677,7 @@ class EntityExtractionToolCore:
             result = session.model.llm.invoke(
                 model_config=model_config,
                 prompt_messages=prompt_messages,
-                stream=False,
+                stream=stream,
             )
             content = result.message.content
             return content if isinstance(content, str) else ""
@@ -711,7 +687,7 @@ class EntityExtractionToolCore:
     @staticmethod
     def discover_entity_type_names(text: str, llm_invoke) -> List[str]:
         prompt = f"""
-从以下文本中识别可能的实体类型（例如人物、组织、地点、概念、事件、方法、物品、时间）。
+从以下文本中识别可能的实体类型。
 请每行返回一个类型名称，不要返回其他内容。
 
 文本：
@@ -732,7 +708,9 @@ class EntityExtractionToolCore:
         return EntityExtractionToolCore.deduplicate_keep_order(candidates)
 
     @staticmethod
-    def parse_type_definitions(raw_value: Any, preferred_keys: tuple[str, ...]) -> List[Dict[str, Any]]:
+    def parse_type_definitions(
+        raw_value: Any, preferred_keys: tuple[str, ...]
+    ) -> List[Dict[str, Any]]:
         if raw_value is None:
             return []
 
@@ -748,7 +726,9 @@ class EntityExtractionToolCore:
                 return EntityExtractionToolCore.build_type_defs_from_names(parts)
 
         if isinstance(parsed_value, dict):
-            parsed_value = EntityExtractionToolCore.pick_types_from_mapping(parsed_value, preferred_keys)
+            parsed_value = EntityExtractionToolCore.pick_types_from_mapping(
+                parsed_value, preferred_keys
+            )
 
         if isinstance(parsed_value, list):
             return EntityExtractionToolCore.normalize_type_definitions(parsed_value)
@@ -760,7 +740,9 @@ class EntityExtractionToolCore:
         return EntityExtractionToolCore.build_type_defs_from_names(parts)
 
     @staticmethod
-    def pick_types_from_mapping(payload: dict[str, Any], preferred_keys: tuple[str, ...]) -> Any:
+    def pick_types_from_mapping(
+        payload: dict[str, Any], preferred_keys: tuple[str, ...]
+    ) -> Any:
         candidates: List[Any] = [payload]
         result_value = payload.get("result")
         if isinstance(result_value, dict):
@@ -780,13 +762,20 @@ class EntityExtractionToolCore:
             normalized_item = EntityExtractionToolCore.normalize_type_definition(item)
             if normalized_item:
                 normalized.append(normalized_item)
-        return EntityExtractionToolCore.deduplicate_type_definitions_keep_order(normalized)
+        return EntityExtractionToolCore.deduplicate_type_definitions_keep_order(
+            normalized
+        )
 
     @staticmethod
     def normalize_type_definition(item: Any) -> Optional[Dict[str, Any]]:
         if isinstance(item, dict):
             normalized = dict(item)
-            raw_name = normalized.get("name") or normalized.get("label") or normalized.get("id") or normalized.get("code")
+            raw_name = (
+                normalized.get("name")
+                or normalized.get("label")
+                or normalized.get("id")
+                or normalized.get("code")
+            )
             if not isinstance(raw_name, str) or not raw_name.strip():
                 return None
             name = raw_name.strip()
@@ -808,10 +797,14 @@ class EntityExtractionToolCore:
             name = str(item).strip()
             if name:
                 raw_defs.append({"name": name, "description": name})
-        return EntityExtractionToolCore.deduplicate_type_definitions_keep_order(raw_defs)
+        return EntityExtractionToolCore.deduplicate_type_definitions_keep_order(
+            raw_defs
+        )
 
     @staticmethod
-    def build_relation_type_defs_from_discovered(discovered_relations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def build_relation_type_defs_from_discovered(
+        discovered_relations: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
         raw_defs: List[Dict[str, Any]] = []
         for item in discovered_relations:
             if not isinstance(item, dict):
@@ -823,10 +816,15 @@ class EntityExtractionToolCore:
                 continue
             raw_def = dict(item)
             raw_def["name"] = name
-            if not isinstance(raw_def.get("description"), str) or not raw_def.get("description", "").strip():
+            if (
+                not isinstance(raw_def.get("description"), str)
+                or not raw_def.get("description", "").strip()
+            ):
                 raw_def["description"] = name
             raw_defs.append(raw_def)
-        return EntityExtractionToolCore.deduplicate_type_definitions_keep_order(raw_defs)
+        return EntityExtractionToolCore.deduplicate_type_definitions_keep_order(
+            raw_defs
+        )
 
     @staticmethod
     def extract_type_names(type_definitions: List[Dict[str, Any]]) -> List[str]:
@@ -838,11 +836,118 @@ class EntityExtractionToolCore:
         return EntityExtractionToolCore.deduplicate_keep_order(names)
 
     @staticmethod
-    def build_ontology(entity_types: List[Dict[str, Any]], relation_types: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def build_ontology(
+        entity_types: List[Dict[str, Any]], relation_types: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         return {
             "entity_types": entity_types,
             "edge_types": relation_types,
         }
+
+    @staticmethod
+    def split_text_into_chunks(text: str, max_chunk_chars: int = 1000) -> List[str]:
+        if not isinstance(text, str):
+            text = str(text or "")
+        source = text.strip()
+        if not source:
+            return []
+
+        paragraphs = re.split(r"\n\n+", source)
+        if len(paragraphs) <= 1:
+            paragraphs = re.split(r"\n", source)
+
+        chunks: List[str] = []
+        current = ""
+
+        for para in paragraphs:
+            para = para.strip()
+            if not para:
+                continue
+
+            if len(current) + len(para) < max_chunk_chars:
+                current += (" " if current else "") + para
+            else:
+                if current:
+                    chunks.append(current)
+                if len(para) > max_chunk_chars:
+                    start = 0
+                    while start < len(para):
+                        piece = para[start : start + max_chunk_chars].strip()
+                        if piece:
+                            chunks.append(piece)
+                        start += max_chunk_chars
+                    current = ""
+                else:
+                    current = para
+
+        if current:
+            chunks.append(current)
+
+        if not chunks and source:
+            return [source]
+        return chunks
+
+    @staticmethod
+    def append_new_type_definitions(
+        all_defs: List[Dict[str, Any]],
+        candidate_defs: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        existing_keys = set()
+        for item in all_defs:
+            name = str(item.get("name") or "").strip()
+            key = str(item.get("id") or item.get("code") or name).strip().casefold()
+            if key:
+                existing_keys.add(key)
+
+        new_defs: List[Dict[str, Any]] = []
+        for item in candidate_defs:
+            name = str(item.get("name") or "").strip()
+            key = str(item.get("id") or item.get("code") or name).strip().casefold()
+            if not key or key in existing_keys:
+                continue
+            existing_keys.add(key)
+            all_defs.append(item)
+            new_defs.append(item)
+        return new_defs
+
+    @staticmethod
+    def build_stream_triples_from_relation_dicts(
+        chunk_relations: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        triples: List[Dict[str, Any]] = []
+        for relation in chunk_relations:
+            if not isinstance(relation, dict):
+                continue
+            source = str(relation.get("source") or "").strip()
+            target = str(relation.get("target") or "").strip()
+            if not source or not target:
+                continue
+            relation_name = str(
+                relation.get("type")
+                or relation.get("relation_type")
+                or "RELATED_TO"
+            ).strip() or "RELATED_TO"
+
+            strength_raw = relation.get("strength")
+            try:
+                strength = float(strength_raw if strength_raw is not None else 5)
+            except Exception:
+                strength = 5.0
+            confidence = max(0.0, min(1.0, strength / 10.0))
+
+            triples.append(
+                {
+                    "source": source,
+                    "relation": relation_name,
+                    "target": target,
+                    "source_type": "Entity",
+                    "target_type": "Entity",
+                    "evidence": str(relation.get("description") or ""),
+                    "confidence": round(confidence, 3),
+                }
+            )
+
+        return triples
 
     @staticmethod
     def build_triples_from_extraction(extraction) -> List[Dict[str, Any]]:
@@ -874,14 +979,18 @@ class EntityExtractionToolCore:
                     "source_type": entity_type_map.get(source.casefold(), "Entity"),
                     "target_type": entity_type_map.get(target.casefold(), "Entity"),
                     "evidence": relation.description or "",
-                    "confidence": round(max(0.0, min(1.0, relation.strength / 10.0)), 3),
+                    "confidence": round(
+                        max(0.0, min(1.0, relation.strength / 10.0)), 3
+                    ),
                 }
             )
 
         return triples
 
     @staticmethod
-    def deduplicate_type_definitions_keep_order(values: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def deduplicate_type_definitions_keep_order(
+        values: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
         seen: set[str] = set()
         result: List[Dict[str, Any]] = []
         for value in values:
@@ -909,6 +1018,175 @@ class EntityExtractionToolCore:
             seen.add(key)
             result.append(normalized)
         return result
+
+    @staticmethod
+    def deduplicate_entity_dicts_keep_order(
+        entities: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        seen: set[str] = set()
+        result: List[Dict[str, Any]] = []
+        for entity in entities:
+            if not isinstance(entity, dict):
+                continue
+            name = str(entity.get("name") or "").strip()
+            entity_type = str(entity.get("type") or "").strip()
+            if not name:
+                continue
+            key = f"{name.casefold()}|{entity_type.casefold()}"
+            if key in seen:
+                continue
+            seen.add(key)
+            result.append(entity)
+        return result
+
+    @staticmethod
+    def filter_entities_exclude_type_names(
+        entities: List[Dict[str, Any]],
+        entity_type_names: List[str],
+        relation_type_names: List[str],
+    ) -> List[Dict[str, Any]]:
+        forbidden = {
+            str(name).strip().casefold()
+            for name in (entity_type_names + relation_type_names)
+            if str(name).strip()
+        }
+        if not forbidden:
+            return entities
+
+        filtered: List[Dict[str, Any]] = []
+        for entity in entities:
+            if not isinstance(entity, dict):
+                continue
+            name = str(entity.get("name") or "").strip()
+            if not name:
+                continue
+            if name.casefold() in forbidden:
+                continue
+            filtered.append(entity)
+        return filtered
+
+    @staticmethod
+    def filter_triples_by_entity_names(
+        triples: List[Dict[str, Any]],
+        valid_entity_names: List[str],
+    ) -> List[Dict[str, Any]]:
+        valid_set = {str(name).strip().casefold() for name in valid_entity_names if str(name).strip()}
+        if not valid_set:
+            return []
+
+        filtered: List[Dict[str, Any]] = []
+        seen: set[str] = set()
+        for triple in triples:
+            if not isinstance(triple, dict):
+                continue
+            source = str(triple.get("source") or "").strip()
+            target = str(triple.get("target") or "").strip()
+            relation = str(triple.get("relation") or "").strip()
+            if not source or not target:
+                continue
+            if source.casefold() not in valid_set or target.casefold() not in valid_set:
+                continue
+            key = f"{source.casefold()}|{relation.casefold()}|{target.casefold()}"
+            if key in seen:
+                continue
+            seen.add(key)
+            filtered.append(triple)
+        return filtered
+
+    @staticmethod
+    def _markdown_escape(value: Any) -> str:
+        text = (
+            str(value if value is not None else "")
+            .replace("\r", " ")
+            .replace("\n", " ")
+        )
+        return text.replace("|", "\\|")
+
+    @staticmethod
+    def _pick_value_from_row(row: Any, key: str) -> Any:
+        if isinstance(row, dict):
+            if key in row:
+                return row.get(key)
+            if key == "properties":
+                props = row.get("properties")
+                if isinstance(props, list):
+                    return "; ".join(
+                        [
+                            EntityExtractionToolCore._markdown_escape(item)
+                            for item in props
+                            if item is not None
+                        ]
+                    )
+            return ""
+        return getattr(row, key, "")
+
+    @staticmethod
+    def build_markdown_table_header(
+        columns: List[Tuple[str, str]],
+        title: str | None = None,
+    ) -> str:
+        if not columns:
+            return title or ""
+
+        headers = [header for _, header in columns]
+        lines: List[str] = []
+        if title:
+            lines.append(f"### {title}")
+            lines.append("")
+        lines.append("| " + " | ".join(headers) + " |")
+        lines.append("| " + " | ".join(["---"] * len(headers)) + " |")
+        return "\n".join(lines) + "\n"
+
+    @staticmethod
+    def build_markdown_table_rows(
+        rows: List[Any],
+        columns: List[Tuple[str, str]],
+        include_empty_row: bool = False,
+    ) -> str:
+        if not columns:
+            return ""
+
+        headers = [header for _, header in columns]
+        lines: List[str] = []
+
+        if not rows:
+            if include_empty_row:
+                lines.append(
+                    "| " + " | ".join(["(empty)"] + [""] * (len(headers) - 1)) + " |"
+                )
+            return "\n".join(lines) + ("\n" if lines else "")
+
+        for row in rows:
+            values = [
+                EntityExtractionToolCore._markdown_escape(
+                    EntityExtractionToolCore._pick_value_from_row(row, key)
+                )
+                for key, _ in columns
+            ]
+            lines.append("| " + " | ".join(values) + " |")
+
+        return "\n".join(lines) + ("\n" if lines else "")
+
+    @staticmethod
+    def stream_markdown_variable(
+        tool: Any,
+        variable_name: str,
+        markdown: str,
+        chunk_size: int = 200,
+    ):
+        if not markdown:
+            return
+
+        # Prefer line-based chunks so markdown renders progressively and remains readable.
+        buffer = ""
+        for line in markdown.splitlines(keepends=True):
+            if len(buffer) + len(line) > chunk_size and buffer:
+                yield tool.create_stream_variable_message(variable_name, buffer)
+                buffer = ""
+            buffer += line
+
+        if buffer:
+            yield tool.create_stream_variable_message(variable_name, buffer)
 
 
 def normalize_relation_type(raw_type: str) -> str:
@@ -949,6 +1227,7 @@ def normalize_relation_type(raw_type: str) -> str:
 @dataclass
 class ExtractedEntity:
     """提取的实体"""
+
     name: str
     entity_type: str
     description: str = ""
@@ -959,13 +1238,14 @@ class ExtractedEntity:
             "name": self.name,
             "type": self.entity_type,
             "description": self.description,
-            "attributes": self.attributes
+            "attributes": self.attributes,
         }
 
 
 @dataclass
 class ExtractedRelation:
     """提取的关系"""
+
     source: str
     target: str
     relation_type: str
@@ -980,13 +1260,14 @@ class ExtractedRelation:
             "type": self.relation_type,
             "description": self.description,
             "strength": self.strength,
-            "attributes": self.attributes
+            "attributes": self.attributes,
         }
 
 
 @dataclass
 class ExtractionResult:
     """抽取结果"""
+
     entities: List[ExtractedEntity] = field(default_factory=list)
     relations: List[ExtractedRelation] = field(default_factory=list)
     summary: str = ""
@@ -1201,7 +1482,7 @@ class EntityExtractor:
         llm_invoke: LlmInvokeFn,
         model: str = None,
         max_gleanings: int = 1,
-        entity_types: List[str] = None
+        entity_types: List[str] = None,
     ):
         if llm_invoke is None:
             raise ValueError("llm_invoke 未配置")
@@ -1220,10 +1501,7 @@ class EntityExtractor:
         }
 
     def extract(
-        self,
-        text: str,
-        ontology: Dict[str, Any] = None,
-        graph_context: str = ""
+        self, text: str, ontology: Dict[str, Any] = None, graph_context: str = ""
     ) -> ExtractionResult:
         """
         从文本中抽取实体和关系
@@ -1243,16 +1521,125 @@ class EntityExtractor:
         entity_types = self._get_entity_types_from_ontology(ontology)
 
         if strategy == "short":
-            return self._extract_with_gleaning(text, entity_types, ontology)
+            return self._extract_with_gleaning(
+                text,
+                entity_types,
+                ontology,
+                graph_context=graph_context,
+            )
         elif strategy == "medium":
             return self._extract_medium(text, entity_types, graph_context, ontology)
         else:
             return self._extract_long(text, entity_types, graph_context, ontology)
 
-    def _get_entity_types_from_ontology(self, ontology: Dict[str, Any] = None) -> List[str]:
+    def extract_with_progress(
+        self, text: str, ontology: Dict[str, Any] = None, graph_context: str = ""
+    ) -> Iterator[Dict[str, Any]]:
+        """
+        统一按文本分块输出抽取进度事件（真正回调模式）。
+
+        事件格式：
+        - chunk: 每个文本块处理完成后立即产出
+        - final: 全部文本块聚合后的最终结果
+        """
+        strategy = EntityExtractionStrategy.get_strategy(text)
+        entity_types = self._get_entity_types_from_ontology(ontology)
+        topics: List[str] = []
+        if strategy in ("medium", "long"):
+            topics_prompt = f"""请分析以下文本，提取出主要主题（3-5个关键词）：
+
+{text[:1000]}
+
+请以 JSON 格式返回：
+{{"topics": ["主题1", "主题2", ...]}}
+"""
+            topics_response = self._call_llm(topics_prompt, temperature=0.3)
+            topics = self._extract_topics(topics_response)
+
+        valid_paragraphs = EntityExtractionToolCore.split_text_into_chunks(
+            text=text,
+            max_chunk_chars=1000,
+        )
+
+        total_chunks = len(valid_paragraphs)
+        all_entities: List[ExtractedEntity] = []
+        all_relations: List[ExtractedRelation] = []
+        entity_keys: set[str] = set()
+        relation_keys: set[str] = set()
+        total_tokens = 0
+
+        for chunk_index, paragraph in enumerate(valid_paragraphs, start=1):
+            chunk_text = paragraph.strip()[:2000]
+            if not chunk_text:
+                continue
+
+            # 每个 chunk 复用既有多轮抽取能力，保持与主抽取路径的一致性
+            chunk_result = self._extract_with_gleaning(
+                chunk_text,
+                entity_types,
+                ontology,
+                graph_context=graph_context,
+            )
+            chunk_tokens = chunk_result.tokens_used
+            total_tokens += chunk_tokens
+
+            newly_added_entities: List[ExtractedEntity] = []
+            for entity in chunk_result.entities:
+                key = f"{entity.name.strip().casefold()}|{entity.entity_type.strip().casefold()}"
+                if key and key not in entity_keys:
+                    entity_keys.add(key)
+                    all_entities.append(entity)
+                    newly_added_entities.append(entity)
+
+            newly_added_relations: List[ExtractedRelation] = []
+            for relation in chunk_result.relations:
+                rel_key = (
+                    f"{relation.source.strip().casefold()}|"
+                    f"{relation.relation_type.strip().casefold()}|"
+                    f"{relation.target.strip().casefold()}"
+                )
+                if rel_key and rel_key not in relation_keys:
+                    relation_keys.add(rel_key)
+                    all_relations.append(relation)
+                    newly_added_relations.append(relation)
+
+            yield {
+                "event": "chunk",
+                "strategy": strategy,
+                "chunk_index": chunk_index,
+                "total_chunks": total_chunks,
+                "chunk_text_preview": chunk_text[:120],
+                "chunk_entities": [entity.to_dict() for entity in newly_added_entities],
+                "chunk_relations": [
+                    relation.to_dict() for relation in newly_added_relations
+                ],
+                "chunk_tokens_used": chunk_tokens,
+            }
+
+            if chunk_index % 5 == 0:
+                logger.debug(f"已处理 {chunk_index}/{total_chunks} 个段落")
+
+        logger.info(
+            f"分块抽取完成: 段落={total_chunks}, 实体={len(all_entities)}, 关系={len(all_relations)}, strategy={strategy}"
+        )
+        final_result = ExtractionResult(
+            entities=all_entities,
+            relations=all_relations,
+            topics=EntityExtractionToolCore.deduplicate_keep_order(topics),
+            tokens_used=total_tokens,
+        )
+        yield {"event": "final", "strategy": strategy, "result": final_result}
+
+    def _get_entity_types_from_ontology(
+        self, ontology: Dict[str, Any] = None
+    ) -> List[str]:
         """从本体定义中提取实体类型"""
         # 基础类型（始终包含）
-        base_types = list(self.entity_types) if self.entity_types else list(self.DEFAULT_ENTITY_TYPES)
+        base_types = (
+            list(self.entity_types)
+            if self.entity_types
+            else list(self.DEFAULT_ENTITY_TYPES)
+        )
 
         if not ontology:
             return base_types
@@ -1264,7 +1651,9 @@ class EntityExtractor:
 
         return all_types if all_types else base_types
 
-    def _build_entity_type_descriptions(self, ontology: Dict[str, Any] = None, entity_types: List[str] = None) -> str:
+    def _build_entity_type_descriptions(
+        self, ontology: Dict[str, Any] = None, entity_types: List[str] = None
+    ) -> str:
         """
         构建实体类型描述列表
 
@@ -1389,7 +1778,8 @@ class EntityExtractor:
         self,
         text: str,
         entity_types: List[str],
-        ontology: Dict[str, Any] = None
+        ontology: Dict[str, Any] = None,
+        graph_context: str = "",
     ) -> ExtractionResult:
         """
         使用 GraphRAG 的多轮抽取方法
@@ -1402,9 +1792,20 @@ class EntityExtractor:
         # 构建变量
         variables = {**self.prompt_variables, "entity_types": ",".join(entity_types)}
         variables["input_text"] = text
-        variables["entity_type_descriptions"] = self._build_entity_type_descriptions(ontology, entity_types)
-        variables["relation_type_descriptions"] = self._build_relation_type_descriptions(ontology)
-        variables["examples"] = "\n\n".join(ENTITY_EXTRACTION_EXAMPLES["default"])
+        variables["entity_type_descriptions"] = self._build_entity_type_descriptions(
+            ontology, entity_types
+        )
+        variables["relation_type_descriptions"] = (
+            self._build_relation_type_descriptions(ontology)
+        )
+        context_append = ""
+        if graph_context:
+            context_append = (
+                "\n\n图谱上下文（仅供参考，不作为抽取目标）:\n" + graph_context
+            )
+        variables["examples"] = (
+            "\n\n".join(ENTITY_EXTRACTION_EXAMPLES["default"]) + context_append
+        )
 
         # 构建初始提示词
         prompt = self._replace_variables(GRAPH_EXTRACTION_PROMPT, variables)
@@ -1417,19 +1818,26 @@ class EntityExtractor:
         history = [
             {"role": "system", "content": prompt},
             {"role": "user", "content": "Output:"},
-            {"role": "assistant", "content": response}
+            {"role": "assistant", "content": response},
         ]
 
         # 多轮抽取 (Gleaning)
         for i in range(self.max_gleanings):
             # 构建继续抽取的 prompt（替换变量）
-            continue_prompt = self._replace_variables(CONTINUE_PROMPT, {
-                "tuple_delimiter": DEFAULT_TUPLE_DELIMITER,
-                "record_delimiter": DEFAULT_RECORD_DELIMITER,
-                "entity_types": ",".join(entity_types),
-                "entity_type_descriptions": self._build_entity_type_descriptions(ontology, entity_types),
-                "relation_type_descriptions": self._build_relation_type_descriptions(ontology),
-            })
+            continue_prompt = self._replace_variables(
+                CONTINUE_PROMPT,
+                {
+                    "tuple_delimiter": DEFAULT_TUPLE_DELIMITER,
+                    "record_delimiter": DEFAULT_RECORD_DELIMITER,
+                    "entity_types": ",".join(entity_types),
+                    "entity_type_descriptions": self._build_entity_type_descriptions(
+                        ontology, entity_types
+                    ),
+                    "relation_type_descriptions": self._build_relation_type_descriptions(
+                        ontology
+                    ),
+                },
+            )
             history.append({"role": "user", "content": continue_prompt})
             response = self._call_llm("", messages=history, temperature=0.3)
             total_tokens += self._count_tokens(continue_prompt + response)
@@ -1442,7 +1850,9 @@ class EntityExtractor:
             history.append({"role": "user", "content": LOOP_PROMPT})
 
             # 询问是否还有更多实体
-            continuation = self._call_llm("", messages=history, temperature=0.0, max_tokens=1)
+            continuation = self._call_llm(
+                "", messages=history, temperature=0.0, max_tokens=1
+            )
             total_tokens += self._count_tokens(LOOP_PROMPT + continuation)
 
             if continuation.strip().upper() != "Y":
@@ -1455,12 +1865,12 @@ class EntityExtractor:
         # 解析结果
         entities, relations = self._parse_graphrag_results(results)
 
-        logger.info(f"多轮抽取完成: 实体={len(entities)}, 关系={len(relations)}, tokens={total_tokens}")
+        logger.info(
+            f"多轮抽取完成: 实体={len(entities)}, 关系={len(relations)}, tokens={total_tokens}"
+        )
 
         return ExtractionResult(
-            entities=entities,
-            relations=relations,
-            tokens_used=total_tokens
+            entities=entities, relations=relations, tokens_used=total_tokens
         )
 
     def _extract_medium(
@@ -1468,7 +1878,7 @@ class EntityExtractor:
         text: str,
         entity_types: List[str],
         graph_context: str,
-        ontology: Dict[str, Any] = None
+        ontology: Dict[str, Any] = None,
     ) -> ExtractionResult:
         """
         中等文本抽取：先提取主题，再进行完整抽取
@@ -1492,9 +1902,15 @@ class EntityExtractor:
 
         variables = {**self.prompt_variables, "entity_types": ",".join(entity_types)}
         variables["input_text"] = text
-        variables["entity_type_descriptions"] = self._build_entity_type_descriptions(ontology, entity_types)
-        variables["relation_type_descriptions"] = self._build_relation_type_descriptions(ontology)
-        variables["examples"] = "\n\n".join(ENTITY_EXTRACTION_EXAMPLES["default"]) + context
+        variables["entity_type_descriptions"] = self._build_entity_type_descriptions(
+            ontology, entity_types
+        )
+        variables["relation_type_descriptions"] = (
+            self._build_relation_type_descriptions(ontology)
+        )
+        variables["examples"] = (
+            "\n\n".join(ENTITY_EXTRACTION_EXAMPLES["default"]) + context
+        )
 
         prompt = self._replace_variables(GRAPH_EXTRACTION_PROMPT, variables)
         response = self._call_llm(prompt, temperature=0.3)
@@ -1505,7 +1921,7 @@ class EntityExtractor:
             entities=entities,
             relations=relations,
             topics=topics,
-            tokens_used=self._count_tokens(prompt + response)
+            tokens_used=self._count_tokens(prompt + response),
         )
 
     def _extract_long(
@@ -1513,7 +1929,7 @@ class EntityExtractor:
         text: str,
         entity_types: List[str],
         graph_context: str,
-        ontology: Dict[str, Any] = None
+        ontology: Dict[str, Any] = None,
     ) -> ExtractionResult:
         """
         长文本抽取：分段处理 + 实体去重
@@ -1535,10 +1951,17 @@ class EntityExtractor:
             # 限制单次输入长度
             chunk_text = paragraph[:2000]
 
-            variables = {**self.prompt_variables, "entity_types": ",".join(entity_types)}
+            variables = {
+                **self.prompt_variables,
+                "entity_types": ",".join(entity_types),
+            }
             variables["input_text"] = chunk_text
-            variables["entity_type_descriptions"] = self._build_entity_type_descriptions(ontology, entity_types)
-            variables["relation_type_descriptions"] = self._build_relation_type_descriptions(ontology)
+            variables["entity_type_descriptions"] = (
+                self._build_entity_type_descriptions(ontology, entity_types)
+            )
+            variables["relation_type_descriptions"] = (
+                self._build_relation_type_descriptions(ontology)
+            )
             variables["examples"] = "\n\n".join(ENTITY_EXTRACTION_EXAMPLES["default"])
 
             prompt = self._replace_variables(GRAPH_EXTRACTION_PROMPT, variables)
@@ -1560,15 +1983,17 @@ class EntityExtractor:
             if processed_chunks % 5 == 0:
                 logger.debug(f"已处理 {processed_chunks}/{len(paragraphs)} 个段落")
 
-        logger.info(f"长文本抽取完成: 段落={processed_chunks}, 实体={len(all_entities)}, 关系={len(all_relations)}")
-
-        return ExtractionResult(
-            entities=all_entities,
-            relations=all_relations,
-            tokens_used=total_tokens
+        logger.info(
+            f"长文本抽取完成: 段落={processed_chunks}, 实体={len(all_entities)}, 关系={len(all_relations)}"
         )
 
-    def _parse_graphrag_results(self, results: str) -> Tuple[List[ExtractedEntity], List[ExtractedRelation]]:
+        return ExtractionResult(
+            entities=all_entities, relations=all_relations, tokens_used=total_tokens
+        )
+
+    def _parse_graphrag_results(
+        self, results: str
+    ) -> Tuple[List[ExtractedEntity], List[ExtractedRelation]]:
         """
         解析 GraphRAG 格式的抽取结果
 
@@ -1580,17 +2005,20 @@ class EntityExtractor:
 
         # 按记录分隔符分割
         records = re.split(
-            f'({re.escape(DEFAULT_RECORD_DELIMITER)}|{re.escape(DEFAULT_COMPLETION_DELIMITER)})',
-            results
+            f"({re.escape(DEFAULT_RECORD_DELIMITER)}|{re.escape(DEFAULT_COMPLETION_DELIMITER)})",
+            results,
         )
 
         for record in records:
             record = record.strip()
-            if not record or record in [DEFAULT_RECORD_DELIMITER, DEFAULT_COMPLETION_DELIMITER]:
+            if not record or record in [
+                DEFAULT_RECORD_DELIMITER,
+                DEFAULT_COMPLETION_DELIMITER,
+            ]:
                 continue
 
             # 提取括号内的内容
-            match = re.search(r'\((.*)\)', record)
+            match = re.search(r"\((.*)\)", record)
             if not match:
                 continue
 
@@ -1612,7 +2040,12 @@ class EntityExtractor:
                 entity_desc = parts[3].strip().strip('"').strip("'")
 
                 # 跳过空名称的实体
-                if not entity_name or entity_name.lower() in ('none', 'null', 'n/a', ''):
+                if not entity_name or entity_name.lower() in (
+                    "none",
+                    "null",
+                    "n/a",
+                    "",
+                ):
                     logger.debug(f"跳过空名称实体: {entity_name}")
                     continue
 
@@ -1623,11 +2056,13 @@ class EntityExtractor:
                 if not normalized_type or normalized_type == "Entity":
                     normalized_type = self._infer_entity_type(entity_name, entity_desc)
 
-                entities.append(ExtractedEntity(
-                    name=entity_name,
-                    entity_type=normalized_type,
-                    description=entity_desc
-                ))
+                entities.append(
+                    ExtractedEntity(
+                        name=entity_name,
+                        entity_type=normalized_type,
+                        description=entity_desc,
+                    )
+                )
 
             elif record_type == "relationship":
                 # 新格式: ("relationship"{delimiter}<source>{delimiter}<target>{delimiter}<description>{delimiter}<keywords>{delimiter}<strength>)
@@ -1652,18 +2087,20 @@ class EntityExtractor:
                     relation_type = "RELATED_TO"  # 默认值
                     if keywords:
                         # keywords 可能是逗号/顿号分隔的多个关键词，取第一个
-                        primary_keyword = keywords.split(',')[0].split('、')[0].strip()
+                        primary_keyword = keywords.split(",")[0].split("、")[0].strip()
                         if primary_keyword:
                             relation_type = normalize_relation_type(primary_keyword)
 
-                    relations.append(ExtractedRelation(
-                        source=parts[1].strip().strip('"').strip("'"),
-                        target=parts[2].strip().strip('"').strip("'"),
-                        relation_type=relation_type,
-                        description=parts[3].strip().strip('"').strip("'"),
-                        strength=max(1, min(10, strength)),
-                        attributes={"keywords": keywords} if keywords else {}
-                    ))
+                    relations.append(
+                        ExtractedRelation(
+                            source=parts[1].strip().strip('"').strip("'"),
+                            target=parts[2].strip().strip('"').strip("'"),
+                            relation_type=relation_type,
+                            description=parts[3].strip().strip('"').strip("'"),
+                            strength=max(1, min(10, strength)),
+                            attributes={"keywords": keywords} if keywords else {},
+                        )
+                    )
                 except Exception as e:
                     logger.debug(f"关系解析失败: {e}, parts={parts}")
 
@@ -1674,14 +2111,17 @@ class EntityExtractor:
         prompt: str = "",
         messages: List[Dict] = None,
         temperature: float = 0.3,
-        max_tokens: int = 2000
+        max_tokens: int = 2000,
     ) -> str:
         """调用 LLM"""
         try:
             if messages is None:
                 messages = [
-                    {"role": "system", "content": "你是一个专业的知识图谱构建助手，擅长从文本中提取实体和关系。"},
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "system",
+                        "content": "你是一个专业的知识图谱构建助手，擅长从文本中提取实体和关系。",
+                    },
+                    {"role": "user", "content": prompt},
                 ]
             response_text = self.llm_invoke(messages, temperature, max_tokens)
             return (response_text or "").strip()
@@ -1705,25 +2145,25 @@ class EntityExtractor:
         """从 LLM 响应中提取主题"""
         try:
             # 尝试提取 JSON
-            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            json_match = re.search(r"\{.*\}", response, re.DOTALL)
             if json_match:
                 data = json.loads(json_match.group(0))
                 return data.get("topics", [])
 
             # 尝试提取列表
-            list_match = re.search(r'\[.*\]', response, re.DOTALL)
+            list_match = re.search(r"\[.*\]", response, re.DOTALL)
             if list_match:
                 return json.loads(list_match.group(0))
 
             # 提取行内容
-            lines = response.strip().split('\n')
+            lines = response.strip().split("\n")
             topics = []
             for line in lines:
                 line = line.strip()
-                if line and not line.startswith('{') and not line.startswith('['):
+                if line and not line.startswith("{") and not line.startswith("["):
                     # 移除可能的序号和符号
-                    line = re.sub(r'^[\d\.\-\*\+]+\s*', '', line)
-                    line = re.sub(r'^["\']|["\']$', '', line)
+                    line = re.sub(r"^[\d\.\-\*\+]+\s*", "", line)
+                    line = re.sub(r'^["\']|["\']$', "", line)
                     if line:
                         topics.append(line)
             return topics[:5]
@@ -1752,58 +2192,165 @@ class EntityExtractor:
         desc_lower = description.lower()
 
         # 时间：明显时间格式/关键词
-        if re.search(r"\b(19|20)\d{2}\b", entity_name) or re.search(r"\d{4}[-/]\d{1,2}[-/]\d{1,2}", entity_name):
+        if re.search(r"\b(19|20)\d{2}\b", entity_name) or re.search(
+            r"\d{4}[-/]\d{1,2}[-/]\d{1,2}", entity_name
+        ):
             return "Time"
-        time_keywords = ["年", "月", "日", "时", "季度", "year", "month", "day", "quarter"]
+        time_keywords = [
+            "年",
+            "月",
+            "日",
+            "时",
+            "季度",
+            "year",
+            "month",
+            "day",
+            "quarter",
+        ]
         if any(kw in name_lower for kw in time_keywords):
             return "Time"
 
         # 组织
         org_keywords = [
-            "公司", "集团", "大学", "学院", "研究院", "委员会", "部门", "实验室",
-            "inc", "corp", "company", "university", "institute", "lab", "team",
+            "公司",
+            "集团",
+            "大学",
+            "学院",
+            "研究院",
+            "委员会",
+            "部门",
+            "实验室",
+            "inc",
+            "corp",
+            "company",
+            "university",
+            "institute",
+            "lab",
+            "team",
         ]
         if any(kw in name_lower for kw in org_keywords):
             return "Organization"
 
         # 地点
         location_keywords = [
-            "省", "市", "区", "县", "路", "街", "园区", "大厦", "机场", "车站",
-            "city", "country", "province", "street", "park",
+            "省",
+            "市",
+            "区",
+            "县",
+            "路",
+            "街",
+            "园区",
+            "大厦",
+            "机场",
+            "车站",
+            "city",
+            "country",
+            "province",
+            "street",
+            "park",
         ]
         if any(kw in name_lower for kw in location_keywords):
             return "Location"
 
         # 事件
         event_keywords = [
-            "发布会", "会议", "峰会", "比赛", "活动", "事故", "收购", "并购",
-            "launch", "summit", "meeting", "event", "incident", "acquisition",
+            "发布会",
+            "会议",
+            "峰会",
+            "比赛",
+            "活动",
+            "事故",
+            "收购",
+            "并购",
+            "launch",
+            "summit",
+            "meeting",
+            "event",
+            "incident",
+            "acquisition",
         ]
         if any(kw in name_lower for kw in event_keywords):
             return "Event"
 
         # 文档
-        doc_keywords = ["报告", "白皮书", "论文", "规范", "标准", "文档", "report", "paper", "spec", "standard"]
+        doc_keywords = [
+            "报告",
+            "白皮书",
+            "论文",
+            "规范",
+            "标准",
+            "文档",
+            "report",
+            "paper",
+            "spec",
+            "standard",
+        ]
         if any(kw in name_lower for kw in doc_keywords):
             return "Document"
 
         # 技术/方法
-        method_keywords = ["算法", "协议", "框架", "模型", "方法", "流程", "algorithm", "protocol", "framework", "model"]
+        method_keywords = [
+            "算法",
+            "协议",
+            "框架",
+            "模型",
+            "方法",
+            "流程",
+            "algorithm",
+            "protocol",
+            "framework",
+            "model",
+        ]
         if any(kw in name_lower or kw in desc_lower for kw in method_keywords):
             return "Method"
 
         # 产品
-        product_keywords = ["系统", "平台", "产品", "版本", "软件", "应用", "platform", "system", "product", "version", "app"]
+        product_keywords = [
+            "系统",
+            "平台",
+            "产品",
+            "版本",
+            "软件",
+            "应用",
+            "platform",
+            "system",
+            "product",
+            "version",
+            "app",
+        ]
         if any(kw in name_lower for kw in product_keywords):
             return "Product"
 
         # 指标
-        metric_keywords = ["率", "比率", "得分", "指数", "增长", "下降", "ms", "秒", "%", "score", "rate", "latency"]
+        metric_keywords = [
+            "率",
+            "比率",
+            "得分",
+            "指数",
+            "增长",
+            "下降",
+            "ms",
+            "秒",
+            "%",
+            "score",
+            "rate",
+            "latency",
+        ]
         if any(kw in name_lower for kw in metric_keywords):
             return "Metric"
 
         # 概念
-        concept_keywords = ["理论", "概念", "原则", "思想", "策略", "theory", "concept", "principle", "idea"]
+        concept_keywords = [
+            "理论",
+            "概念",
+            "原则",
+            "思想",
+            "策略",
+            "theory",
+            "concept",
+            "principle",
+            "idea",
+        ]
         if any(kw in name_lower or kw in desc_lower for kw in concept_keywords):
             return "Concept"
 
@@ -1816,33 +2363,10 @@ class EntityExtractor:
 
     def _split_text_smartly(self, text: str) -> List[str]:
         """智能分段"""
-        # 按双换行分段
-        paragraphs = re.split(r'\n\n+', text)
-
-        # 如果没有双换行，按单换行分段
-        if len(paragraphs) <= 1:
-            paragraphs = re.split(r'\n', text)
-
-        # 合并过短的段落
-        result = []
-        current = ""
-
-        for para in paragraphs:
-            para = para.strip()
-            if not para:
-                continue
-
-            if len(current) + len(para) < 1000:
-                current += (" " if current else "") + para
-            else:
-                if current:
-                    result.append(current)
-                current = para
-
-        if current:
-            result.append(current)
-
-        return result
+        return EntityExtractionToolCore.split_text_into_chunks(
+            text=text,
+            max_chunk_chars=1000,
+        )
 
 
 class GraphEntityExtractor:
@@ -1858,13 +2382,12 @@ class GraphEntityExtractor:
         self.neo4j = Neo4jRepository()
         self.extractor = EntityExtractor(llm_invoke=llm_invoke, model=model)
 
-
     def extract_and_store(
         self,
         graph_id: str,
         text: str,
         ontology: Dict[str, Any] = None,
-        enable_resolution: bool = True
+        enable_resolution: bool = True,
     ) -> ExtractionResult:
         """
         抽取实体并存储到图谱
@@ -1902,8 +2425,7 @@ class GraphEntityExtractor:
 
         if not result.entities:
             logger.warning(
-                f"未抽取到实体: graph_id={graph_id}, "
-                f"model={self.extractor.model}"
+                f"未抽取到实体: graph_id={graph_id}, " f"model={self.extractor.model}"
             )
             text_preview = text[:200].replace("\n", " ")
             logger.debug(f"文本预览: {text_preview}")
@@ -1913,7 +2435,9 @@ class GraphEntityExtractor:
                 logger.info(f"实体样例: {sample_entities}")
 
         if result.relations:
-            sample_relations = ", ".join([r.relation_type for r in result.relations[:5] if r.relation_type])
+            sample_relations = ", ".join(
+                [r.relation_type for r in result.relations[:5] if r.relation_type]
+            )
             if sample_relations:
                 logger.info(f"关系样例: {sample_relations}")
         # 实体解析去重（可选）
@@ -1923,7 +2447,7 @@ class GraphEntityExtractor:
             resolved_entities = resolver.resolve_entities(
                 result.entities,
                 use_llm=False,  # 暂时禁用 LLM 以加快速度
-                distance_threshold=0.7
+                distance_threshold=0.7,
             )
             # 更新结果
             result.entities = resolved_entities
@@ -1932,7 +2456,9 @@ class GraphEntityExtractor:
         self._store_entities(graph_id, result.entities)
         self._store_relations(graph_id, result.relations)
 
-        logger.info(f"实体抽取并存储完成: {len(result.entities)} 个实体, {len(result.relations)} 个关系")
+        logger.info(
+            f"实体抽取并存储完成: {len(result.entities)} 个实体, {len(result.relations)} 个关系"
+        )
 
         return result
 
@@ -1944,10 +2470,14 @@ class GraphEntityExtractor:
         RETURN n.name as name
         LIMIT $limit
         """
-        results = self.neo4j._execute_query(query, {"graph_id": graph_id, "limit": limit})
+        results = self.neo4j._execute_query(
+            query, {"graph_id": graph_id, "limit": limit}
+        )
         return [r["name"] for r in results if r.get("name")]
 
-    def _store_entities(self, graph_id: str, entities: List[ExtractedEntity], merge_mode: bool = True):
+    def _store_entities(
+        self, graph_id: str, entities: List[ExtractedEntity], merge_mode: bool = True
+    ):
         """存储实体到 Neo4j，支持合并模式"""
         created_count = 0
         updated_count = 0
@@ -1961,11 +2491,14 @@ class GraphEntityExtractor:
             WHERE $entity_type IN labels(n)
             RETURN n.uuid as uuid, n.summary as summary, n.attributes as attributes
             """
-            existing = self.neo4j._execute_query(check_query, {
-                "graph_id": graph_id,
-                "name": entity.name,
-                "entity_type": entity.entity_type
-            })
+            existing = self.neo4j._execute_query(
+                check_query,
+                {
+                    "graph_id": graph_id,
+                    "name": entity.name,
+                    "entity_type": entity.entity_type,
+                },
+            )
 
             if existing:
                 if merge_mode:
@@ -1973,15 +2506,26 @@ class GraphEntityExtractor:
                     existing_uuid = existing[0].get("uuid")
                     existing_summary = existing[0].get("summary", "")
                     # 将 Neo4j Map 转换为纯 Python dict
-                    existing_attrs = _convert_neo4j_record(existing[0].get("attributes")) or {}
+                    existing_attrs = (
+                        _convert_neo4j_record(existing[0].get("attributes")) or {}
+                    )
 
                     # 合并描述
                     merged_summary = existing_summary
-                    if entity.description and entity.description not in existing_summary:
-                        merged_summary = f"{existing_summary}; {entity.description}" if existing_summary else entity.description
+                    if (
+                        entity.description
+                        and entity.description not in existing_summary
+                    ):
+                        merged_summary = (
+                            f"{existing_summary}; {entity.description}"
+                            if existing_summary
+                            else entity.description
+                        )
 
                     # 合并属性并清洗
-                    merged_attrs = _sanitize_attributes({**existing_attrs, **entity.attributes})
+                    merged_attrs = _sanitize_attributes(
+                        {**existing_attrs, **entity.attributes}
+                    )
 
                     # 更新实体
                     update_query = """
@@ -1989,31 +2533,44 @@ class GraphEntityExtractor:
                     SET n.summary = $summary, n.attributes = $attributes
                     RETURN n.uuid as uuid
                     """
-                    logger.debug(f"准备更新实体: name={entity.name}, attrs={merged_attrs}")
+                    logger.debug(
+                        f"准备更新实体: name={entity.name}, attrs={merged_attrs}"
+                    )
                     # 将 attributes 字典序列化为 JSON 字符串（Neo4j 不支持 Map 类型作为属性值）
-                    attrs_json = json.dumps(merged_attrs, ensure_ascii=False) if merged_attrs else "{}"
-                    self.neo4j._execute_query(update_query, {
-                        "uuid": existing_uuid,
-                        "summary": merged_summary,
-                        "attributes": attrs_json
-                    })
+                    attrs_json = (
+                        json.dumps(merged_attrs, ensure_ascii=False)
+                        if merged_attrs
+                        else "{}"
+                    )
+                    self.neo4j._execute_query(
+                        update_query,
+                        {
+                            "uuid": existing_uuid,
+                            "summary": merged_summary,
+                            "attributes": attrs_json,
+                        },
+                    )
                     logger.debug(f"合并实体: {entity.name} ({entity.entity_type})")
                     updated_count += 1
                 else:
-                    logger.debug(f"实体已存在，跳过: {entity.name} ({entity.entity_type})")
+                    logger.debug(
+                        f"实体已存在，跳过: {entity.name} ({entity.entity_type})"
+                    )
                     skipped_count += 1
                 continue
 
             # 创建新实体
             try:
                 # 清洗属性值，确保没有嵌套的 dict/map（Neo4j 不支持）
-                sanitized_attrs = _sanitize_attributes({"entity_type": entity.entity_type, **entity.attributes})
+                sanitized_attrs = _sanitize_attributes(
+                    {"entity_type": entity.entity_type, **entity.attributes}
+                )
                 self.neo4j.create_node(
                     graph_id=graph_id,
                     name=entity.name,
                     labels=["Entity", entity.entity_type],
                     summary=entity.description,
-                    attributes=sanitized_attrs
+                    attributes=sanitized_attrs,
                 )
                 logger.debug(f"创建实体: {entity.name} ({entity.entity_type})")
                 created_count += 1
@@ -2026,13 +2583,17 @@ class GraphEntityExtractor:
             f"skipped={skipped_count}, failed={failed_count}"
         )
 
-    def _store_relations(self, graph_id: str, relations: List[ExtractedRelation], merge_mode: bool = True):
+    def _store_relations(
+        self, graph_id: str, relations: List[ExtractedRelation], merge_mode: bool = True
+    ):
         """存储关系到 Neo4j，支持合并模式"""
         if not relations:
             return
 
         # 获取实体名称到 UUID 的映射
-        entity_names = list(set([r.source for r in relations] + [r.target for r in relations]))
+        entity_names = list(
+            set([r.source for r in relations] + [r.target for r in relations])
+        )
 
         name_to_uuid = {}
         for name in entity_names:
@@ -2040,7 +2601,9 @@ class GraphEntityExtractor:
             MATCH (n {graph_id: $graph_id, name: $name})
             RETURN n.uuid as uuid
             """
-            result = self.neo4j._execute_query(query, {"graph_id": graph_id, "name": name})
+            result = self.neo4j._execute_query(
+                query, {"graph_id": graph_id, "name": name}
+            )
             if result:
                 name_to_uuid[name] = result[0]["uuid"]
 
@@ -2050,7 +2613,9 @@ class GraphEntityExtractor:
             target_uuid = name_to_uuid.get(relation.target)
 
             if not source_uuid or not target_uuid:
-                logger.debug(f"跳过关系: 源或目标实体不存在 - {relation.source} -> {relation.target}")
+                logger.debug(
+                    f"跳过关系: 源或目标实体不存在 - {relation.source} -> {relation.target}"
+                )
                 continue
 
             # 检查关系是否已存在
@@ -2059,11 +2624,14 @@ class GraphEntityExtractor:
             WHERE r.name = $relation_name
             RETURN r.uuid as uuid, r.fact as fact, r.attributes as attributes
             """
-            existing = self.neo4j._execute_query(check_query, {
-                "source_uuid": source_uuid,
-                "target_uuid": target_uuid,
-                "relation_name": relation.relation_type
-            })
+            existing = self.neo4j._execute_query(
+                check_query,
+                {
+                    "source_uuid": source_uuid,
+                    "target_uuid": target_uuid,
+                    "relation_name": relation.relation_type,
+                },
+            )
 
             if existing:
                 if merge_mode:
@@ -2071,20 +2639,33 @@ class GraphEntityExtractor:
                     existing_uuid = existing[0].get("uuid")
                     existing_fact = existing[0].get("fact", "")
                     # 将 Neo4j Map 转换为纯 Python dict
-                    existing_attrs = _convert_neo4j_record(existing[0].get("attributes")) or {}
+                    existing_attrs = (
+                        _convert_neo4j_record(existing[0].get("attributes")) or {}
+                    )
 
                     # 合并描述
                     merged_fact = existing_fact
-                    if relation.description and relation.description not in existing_fact:
-                        merged_fact = f"{existing_fact}; {relation.description}" if existing_fact else relation.description
+                    if (
+                        relation.description
+                        and relation.description not in existing_fact
+                    ):
+                        merged_fact = (
+                            f"{existing_fact}; {relation.description}"
+                            if existing_fact
+                            else relation.description
+                        )
 
                     # 合并属性（包括 strength 和 keywords）
-                    merged_attrs = _sanitize_attributes({**existing_attrs, **relation.attributes})
+                    merged_attrs = _sanitize_attributes(
+                        {**existing_attrs, **relation.attributes}
+                    )
 
                     # 关系强度取最大值
                     if relation.strength:
                         current_strength = merged_attrs.get("strength", 0)
-                        merged_attrs["strength"] = max(current_strength, relation.strength)
+                        merged_attrs["strength"] = max(
+                            current_strength, relation.strength
+                        )
 
                     # 更新关系
                     update_query = """
@@ -2093,40 +2674,52 @@ class GraphEntityExtractor:
                     SET r.fact = $fact, r.attributes = $attributes
                     RETURN r.uuid as uuid
                     """
-                    self.neo4j._execute_query(update_query, {
-                        "source_uuid": source_uuid,
-                        "target_uuid": target_uuid,
-                        "uuid": existing_uuid,
-                        "fact": merged_fact,
-                        "attributes": merged_attrs
-                    })
+                    self.neo4j._execute_query(
+                        update_query,
+                        {
+                            "source_uuid": source_uuid,
+                            "target_uuid": target_uuid,
+                            "uuid": existing_uuid,
+                            "fact": merged_fact,
+                            "attributes": merged_attrs,
+                        },
+                    )
                     logger.debug(f"合并关系: {relation.source} -> {relation.target}")
                 else:
-                    logger.debug(f"关系已存在，跳过: {relation.source} -> {relation.target}")
+                    logger.debug(
+                        f"关系已存在，跳过: {relation.source} -> {relation.target}"
+                    )
                 continue
 
             # 创建新关系
             try:
                 # 清洗关系属性值，确保没有嵌套的 dict/map
-                sanitized_attrs = _sanitize_attributes({
-                    "strength": relation.strength,
-                    "relation_type": relation.relation_type,
-                    **relation.attributes
-                })
+                sanitized_attrs = _sanitize_attributes(
+                    {
+                        "strength": relation.strength,
+                        "relation_type": relation.relation_type,
+                        **relation.attributes,
+                    }
+                )
                 self.neo4j.create_edge(
                     graph_id=graph_id,
                     source_uuid=source_uuid,
                     target_uuid=target_uuid,
                     name=relation.relation_type,
                     fact=relation.description,
-                    attributes=sanitized_attrs
+                    attributes=sanitized_attrs,
                 )
-                logger.debug(f"创建关系: {relation.source} -[{relation.relation_type}]-> {relation.target} (强度: {relation.strength})")
+                logger.debug(
+                    f"创建关系: {relation.source} -[{relation.relation_type}]-> {relation.target} (强度: {relation.strength})"
+                )
             except Exception as e:
-                logger.warning(f"创建关系失败 {relation.source} -> {relation.target}: {e}")
+                logger.warning(
+                    f"创建关系失败 {relation.source} -> {relation.target}: {e}"
+                )
 
 
 # ========== 实体解析（Entity Resolution）模块 ==========
+
 
 class EntityResolver:
     """
@@ -2182,19 +2775,14 @@ class EntityResolver:
         return similarity
 
     def _are_similar_by_distance(
-        self,
-        name1: str,
-        name2: str,
-        threshold: float = 0.7
+        self, name1: str, name2: str, threshold: float = 0.7
     ) -> bool:
         """使用编辑距离判断两个实体名称是否相似"""
         similarity = self._string_similarity(name1, name2)
         return similarity >= threshold
 
     def _should_merge_with_llm(
-        self,
-        entity1: ExtractedEntity,
-        entity2: ExtractedEntity
+        self, entity1: ExtractedEntity, entity2: ExtractedEntity
     ) -> Tuple[bool, str]:
         """
         使用 LLM 判断两个实体是否应该合并
@@ -2228,18 +2816,21 @@ class EntityResolver:
         try:
             content = self.llm_invoke(
                 [
-                    {"role": "system", "content": "你是一个专业的实体对齐专家，擅长判断两个实体是否指向同一事物。"},
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "system",
+                        "content": "你是一个专业的实体对齐专家，擅长判断两个实体是否指向同一事物。",
+                    },
+                    {"role": "user", "content": prompt},
                 ],
                 0.0,
                 100,
             ).strip()
-            
+
             # 解析响应
-            lines = content.split('\n', 1)
+            lines = content.split("\n", 1)
             decision = lines[0].strip().upper()
 
-            should_merge = decision in ('YES', 'Y', '是', '应该', '合并')
+            should_merge = decision in ("YES", "Y", "是", "应该", "合并")
             reason = lines[1].strip() if len(lines) > 1 else ""
 
             return should_merge, reason
@@ -2252,7 +2843,7 @@ class EntityResolver:
         self,
         entities: List[ExtractedEntity],
         use_llm: bool = True,
-        distance_threshold: float = 0.6
+        distance_threshold: float = 0.6,
     ) -> List[ExtractedEntity]:
         """
         实体解析去重
@@ -2300,7 +2891,9 @@ class EntityResolver:
                         continue
 
                     # 第一步：编辑距离筛选
-                    if self._are_similar_by_distance(e1.name, e2.name, distance_threshold):
+                    if self._are_similar_by_distance(
+                        e1.name, e2.name, distance_threshold
+                    ):
                         merge_candidates.append((j, e2))
 
                 # 第二步：LLM 判断
@@ -2310,7 +2903,9 @@ class EntityResolver:
                         if should_merge:
                             similar_entities.append(e2)
                             merged.add(j)
-                            logger.debug(f"合并实体: '{e1.name}' + '{e2.name}' | 理由: {reason}")
+                            logger.debug(
+                                f"合并实体: '{e1.name}' + '{e2.name}' | 理由: {reason}"
+                            )
                             merge_count += 1
                 else:
                     # 不使用 LLM 时，直接合并编辑距离相似的
@@ -2326,7 +2921,9 @@ class EntityResolver:
                 else:
                     resolved_entities.append(e1)
 
-        logger.info(f"实体解析完成: 输出实体数={len(resolved_entities)}, 合并了 {merge_count} 个重复实体")
+        logger.info(
+            f"实体解析完成: 输出实体数={len(resolved_entities)}, 合并了 {merge_count} 个重复实体"
+        )
 
         return resolved_entities
 
@@ -2357,6 +2954,6 @@ class EntityResolver:
             attributes={
                 **base.attributes,
                 "aliases": all_names,
-                "name_variants": name_variants
-            }
+                "name_variants": name_variants,
+            },
         )
