@@ -61,79 +61,112 @@ parameters:
 output_schema:
   type: object
   properties:
+    relations:
+      type: object
+      description: 关系抽取结果对象
     triples_count:
       type: integer
+      description: 抽取到的三元组数量
     triples:
       type: array
+      description: 抽取到的关系三元组列表
       items:
         type: object
         properties:
           source:
             type: string
+            description: 源实体名称
           relation:
             type: string
+            description: 关系类型
           target:
             type: string
+            description: 目标实体名称
           source_type:
             type: string
+            description: 源实体类型
           target_type:
             type: string
+            description: 目标实体类型
           evidence:
             type: string
+            description: 关系证据文本
           confidence:
             type: number
+            description: 关系置信度
+    triples_markdown:
+      type: string
+      description: 流式输出的三元组 Markdown 表格
     entity_types:
       type: array
+      description: 实体类型定义列表
       items:
         type: object
         properties:
           id:
             type: string
+            description: 实体类型 ID
           code:
             type: string
+            description: 实体类型编码
           label:
             type: string
+            description: 实体类型标签
           name:
             type: string
+            description: 实体类型名称
           description:
             type: string
+            description: 实体类型描述
           properties:
             type: array
+            description: 实体类型属性定义
             items:
               type: object
     relation_types:
       type: array
+      description: 关系类型定义列表
       items:
         type: object
         properties:
           id:
             type: string
+            description: 关系类型 ID
           code:
             type: string
+            description: 关系类型编码
           label:
             type: string
+            description: 关系类型标签
           name:
             type: string
+            description: 关系类型名称
           description:
             type: string
+            description: 关系类型描述
           properties:
             type: array
+            description: 关系类型属性定义
             items:
               type: object
     entity_type_names:
       type: array
+      description: 实体类型名称列表
       items:
         type: string
     relation_type_names:
       type: array
+      description: 关系类型名称列表
       items:
         type: string
     topics:
       type: array
+      description: 识别到的主题列表
       items:
         type: string
     tokens_used:
       type: integer
+      description: 模型调用消耗的 token 数
 
 extra:
   python:

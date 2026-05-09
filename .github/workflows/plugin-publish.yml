@@ -17,6 +17,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Print working directory
         run: |
@@ -64,11 +67,23 @@ jobs:
           echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
           echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
 
+      - name: Resolve previous version tag
+        id: previous_tag
+        run: |
+          CURRENT_TAG="v${{ steps.plugin_info.outputs.version }}"
+          PREVIOUS_TAG=$(git tag --list "v*" --sort=-v:refname | grep -vx "$CURRENT_TAG" | head -n 1 || true)
+
+          echo "Current tag: $CURRENT_TAG"
+          echo "Previous tag: ${PREVIOUS_TAG:-<none>}"
+          echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.plugin_info.outputs.version }}
           name: v${{ steps.plugin_info.outputs.version }}
+          previous_tag: ${{ steps.previous_tag.outputs.previous_tag }}
+          generate_release_notes: true
           files: |
             ${{ env.PACKAGE_NAME }}
 
@@ -78,8 +93,6 @@ jobs:
             Plugin: ${{ steps.plugin_info.outputs.plugin_name }}
 
             Version: ${{ steps.plugin_info.outputs.version }}
-
-            Automatically packaged and published by GitHub Actions.
 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

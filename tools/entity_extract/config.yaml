@@ -63,69 +63,95 @@ output_schema:
   properties:
     entities_count:
       type: integer
+      description: 抽取到的实体数量
     entities:
       type: array
+      description: 抽取到的实体列表
       items:
         type: object
         properties:
           name:
             type: string
+            description: 实体名称
           type:
             type: string
+            description: 实体类型
           description:
             type: string
+            description: 实体描述
+    entities_markdown:
+      type: string
+      description: 流式输出的实体 Markdown 表格
     entity_types:
       type: array
+      description: 实体类型定义列表
       items:
         type: object
         properties:
           id:
             type: string
+            description: 实体类型 ID
           code:
             type: string
+            description: 实体类型编码
           label:
             type: string
+            description: 实体类型标签
           name:
             type: string
+            description: 实体类型名称
           description:
             type: string
+            description: 实体类型描述
           properties:
             type: array
+            description: 实体类型属性定义
             items:
               type: object
     relation_types:
       type: array
+      description: 关系类型定义列表
       items:
         type: object
         properties:
           id:
             type: string
+            description: 关系类型 ID
           code:
             type: string
+            description: 关系类型编码
           label:
             type: string
+            description: 关系类型标签
           name:
             type: string
+            description: 关系类型名称
           description:
             type: string
+            description: 关系类型描述
           properties:
             type: array
+            description: 关系类型属性定义
             items:
               type: object
     entity_type_names:
       type: array
+      description: 实体类型名称列表
       items:
         type: string
     relation_type_names:
       type: array
+      description: 关系类型名称列表
       items:
         type: string
     topics:
       type: array
+      description: 识别到的主题列表
       items:
         type: string
     tokens_used:
       type: integer
+      description: 模型调用消耗的 token 数
 
 extra:
   python:

@@ -41,27 +41,39 @@ output_schema:
   properties:
     relation_types:
       type: array
+      description: 提取到的关系类型定义列表
       items:
         type: object
         properties:
           id:
             type: string
+            description: 关系类型 ID
           code:
             type: string
+            description: 关系类型编码
           label:
             type: string
+            description: 关系类型标签
           name:
             type: string
+            description: 关系类型名称
           description:
             type: string
+            description: 关系类型描述
           properties:
             type: array
+            description: 关系类型属性定义
             items:
               type: object
           source:
             type: string
+            description: 关系类型来源
+    relation_types_markdown:
+      type: string
+      description: 流式输出的关系类型 Markdown 表格
     count:
       type: integer
+      description: 关系类型数量
 
 extra:
   python:

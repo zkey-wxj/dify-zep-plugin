@@ -41,25 +41,36 @@ output_schema:
   properties:
     entity_types:
       type: array
+      description: 提取到的实体类型定义列表
       items:
         type: object
         properties:
           id:
             type: string
+            description: 实体类型 ID
           code:
             type: string
+            description: 实体类型编码
           label:
             type: string
+            description: 实体类型标签
           name:
             type: string
+            description: 实体类型名称
           description:
             type: string
+            description: 实体类型描述
           properties:
             type: array
+            description: 实体类型属性定义
             items:
               type: object
+    entity_types_markdown:
+      type: string
+      description: 流式输出的实体类型 Markdown 表格
     count:
       type: integer
+      description: 实体类型数量
 
 extra:
   python:
